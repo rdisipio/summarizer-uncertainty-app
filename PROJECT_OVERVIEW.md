@@ -46,6 +46,9 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
 - Threshold-based uncertainty highlighting must be configurable in UI.
 - Red wavy underline is the initial high-uncertainty marker.
 - Multiple sentence edits in a single paragraph are supported before submission.
+- Clicking a sentence opens an editorial card for that sentence.
+- Editorial cards persist after edits are staged and do not auto-dismiss.
+- If another sentence is clicked, a new editorial card is added at the top (newest-first / timestamp order).
 - Each edit record includes:
   - Sentence reference
   - LLM-edited sentence

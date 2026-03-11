@@ -55,6 +55,22 @@ body {
   line-height: 1.6;
 }
 
+.sentence-button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline;
+  font: inherit;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.sentence-button:hover {
+  background-color: rgba(138, 155, 168, 0.12);
+}
+
 .uncertain-underline {
   text-decoration-line: underline;
   text-decoration-style: wavy;
@@ -64,4 +80,31 @@ body {
 .error-text {
   color: #c23030;
   margin-top: 12px;
+}
+
+.cards-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.editorial-card {
+  border: 1px solid #d8e1e8;
+}
+
+.card-timestamp {
+  margin: 0 0 8px 0;
+}
+
+.card-sentence {
+  font-weight: 600;
+  margin: 0 0 10px 0;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
