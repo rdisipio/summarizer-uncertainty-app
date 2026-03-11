@@ -6,6 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000
 export function App() {
   const [sourceText, setSourceText] = useState("");
   const [threshold, setThreshold] = useState(0.5);
+  const [selectedStyle, setSelectedStyle] = useState("");
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [sentences, setSentences] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +21,7 @@ export function App() {
 
     setIsLoading(true);
     setErrorMessage("");
+    setSelectedStyle(style);
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/summarize`, {
@@ -66,17 +68,19 @@ export function App() {
         />
         <div className="actions-row">
           <Button
-            intent="primary"
+            intent={selectedStyle === "shorten" ? "primary" : "none"}
             text="Shorten"
             loading={isLoading}
             onClick={() => handleGenerate("shorten")}
           />
           <Button
+            intent={selectedStyle === "professional" ? "primary" : "none"}
             text="Professional"
             loading={isLoading}
             onClick={() => handleGenerate("professional")}
           />
           <Button
+            intent={selectedStyle === "colloquial" ? "primary" : "none"}
             text="Colloquial"
             loading={isLoading}
             onClick={() => handleGenerate("colloquial")}
