@@ -1,9 +1,9 @@
 # Basic Project Rules
 
 ## Scope
-This document defines the baseline engineering and design rules for this project.
+This document defines engineering constraints and implementation standards.
 
-## Minimal Frameworks
+## Required Frameworks and Services
 - React (frontend framework)
 - Blueprint (UI component library)
 - FastAPI (backend web framework)
@@ -19,11 +19,16 @@ This document defines the baseline engineering and design rules for this project
   - Add docstrings for modules, classes, and functions
 
 ## Frontend Rules
-- Framework: React
-- UI library: Blueprint
-- Interface direction: minimal and unobtrusive
+- Build the UI with React and Blueprint.
+- Keep the interface minimal and unobtrusive.
+- Preserve readability of uncertainty indicators over decorative styling.
 
-## Design Philosophy
+## Data and Privacy Rules
+- Original user text is sent to the backend for processing.
+- LLM calls are performed by the backend through OpenRouter.
+- Provide a mode/flow where no personal information or edit history is persisted.
+
+## Design Constraints
 The product should align with Dieter Rams' 10 principles of design:
 
 1. Good design is innovative.
@@ -36,15 +41,3 @@ The product should align with Dieter Rams' 10 principles of design:
 8. Good design is thorough down to the last detail.
 9. Good design is environmentally friendly.
 10. Good design is as little design as possible.
-
-### User Stories
-- As a user, I want to paste an original paragraph so I can quickly start from existing text.
-- As a user, I want to choose a rewrite mode (`shorten`, `professional`, `colloquial`) so the output matches my editorial goal.
-- As a user, I want the system to generate an LLM-edited paragraph so I can review a first draft efficiently.
-- As a user, I want uncertainty (ambiguity and risk) attached to each sentence in the LLM-edited text so I can focus on risky content.
-- As a user, I want high-uncertainty sentences marked with a red wavy underline so potential issues are immediately visible.
-- As a user, I want to click a sentence and see it highlighted and copied into a dedicated box so I can edit it with context.
-- As a user, I want to enter a correction and classify it (`editorial refinement`, `factual error`, `cultural mismatch`) so edits are structured.
-- As a user, I want to edit multiple sentences before submitting so I can review a full paragraph in one pass.
-- As a user, I want to submit all edits with one action so the workflow stays simple.
-- As a user, I want the option to avoid storing personal data and edit history so I can preserve privacy.
