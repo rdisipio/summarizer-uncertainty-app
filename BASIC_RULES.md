@@ -3,6 +3,11 @@
 ## Scope
 This document defines the baseline engineering and design rules for this project.
 
+## Minimal Frameworks
+- React (frontend framework)
+- Blueprint (UI component library)
+- OpenRouter (LLM provider integration layer)
+
 ## Backend Rules
 - Language: Python
 - Python version: `> 3.13`
