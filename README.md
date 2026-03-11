@@ -30,6 +30,23 @@ Users must be able to submit edits without storing personal information or edit 
   - local container runtime
   - Hugging Face Spaces
 
+## Docker Compose (Full Stack)
+Use this when you want to run frontend + backend together in containers.
+
+Build and start:
+```bash
+docker compose up --build
+```
+
+Access:
+- Frontend: `http://localhost:8080`
+- Backend API: `http://localhost:8000`
+
+Stop:
+```bash
+docker compose down
+```
+
 ## Installation and Local Setup
 ### Prerequisites
 - Python `3.13+`
