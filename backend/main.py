@@ -104,7 +104,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     for sentence in summary_sentences:
         ambiguity = round(random(), 4)
         risk = round(random(), 4)
-        uncertainty = round(ambiguity + risk, 4)
+        uncertainty = round((ambiguity + risk) / 2, 4)
         sentence_payloads.append(
             SentenceUncertainty(
                 sentence=sentence,
@@ -122,10 +122,31 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         llm_version=DEFAULT_LLM_VERSION,
     )
 
-    return SummarizeResponse(
+    response = SummarizeResponse(
         metadata=metadata,
         style=payload.style,
         threshold=payload.threshold,
         summary=" ".join(summary_sentences),
         sentences=sentence_payloads,
     )
+
+    underlined_count = sum(1 for item in sentence_payloads if item.should_underline)
+    mean_uncertainty = round(
+        sum(item.uncertainty for item in sentence_payloads) / len(sentence_payloads), 4
+    )
+    logger.info(
+        (
+            "Summarize response ready | style=%s threshold=%s llm_version=%s "
+            "sentences=%s underlined=%s mean_uncertainty=%s accepted_at=%s completed_at=%s"
+        ),
+        response.style,
+        response.threshold,
+        response.metadata.llm_version,
+        len(response.sentences),
+        underlined_count,
+        mean_uncertainty,
+        response.metadata.request_accepted_at,
+        response.metadata.request_completed_at,
+    )
+
+    return response
