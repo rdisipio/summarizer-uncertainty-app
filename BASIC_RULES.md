@@ -9,6 +9,13 @@ This document defines engineering constraints and implementation standards.
 - FastAPI (backend web framework)
 - OpenRouter (LLM provider integration layer)
 
+## Runtime and Deployment Rules
+- Current runtime assumption: local macOS development environment.
+- Deployment packaging target: Docker image.
+- Initial deployment targets for the Docker image:
+  - local Docker runtime
+  - Hugging Face Spaces
+
 ## Backend Rules
 - Language: Python
 - Python version: `> 3.13`

@@ -23,6 +23,36 @@ Users must be able to submit edits without storing personal information or edit 
 - Backend: Python + FastAPI
 - LLM integration: OpenRouter
 
+## Runtime and Deployment
+- Current target: local development and execution on macOS.
+- Next phase: package the app as a Docker image.
+- Planned deployment targets for that image:
+  - local container runtime
+  - Hugging Face Spaces
+
+## Installation and Local Setup
+### Prerequisites
+- Python `3.13+`
+- `pipenv`
+- Node.js (includes `npm`)
+
+### Backend Setup (FastAPI)
+```bash
+pipenv install
+pipenv run uvicorn app.main:app --reload
+```
+
+### Frontend Setup (React + Blueprint)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Notes:
+- Python dependencies are managed with `Pipfile`/`pipenv`.
+- React and Blueprint are installed locally via `npm` and imported from `node_modules`.
+
 ## Project Docs
 - Basic technical rules: `BASIC_RULES.md`
 - Functional and architecture skeleton: `PROJECT_OVERVIEW.md`

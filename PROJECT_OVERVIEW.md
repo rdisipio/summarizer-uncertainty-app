@@ -35,7 +35,14 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
   - Compute and return uncertainty metadata per sentence.
   - Accept and process submitted user edits.
 
-## 4. Interaction Rules
+## 4. Runtime and Deployment Plan
+- Phase 1 (current): run locally on macOS for development and iteration.
+- Phase 2: build a Docker image containing backend and frontend runtime components.
+- Phase 3: deploy the same image either:
+  - locally (containerized execution), or
+  - on Hugging Face Spaces.
+
+## 5. Interaction Rules
 - Threshold-based uncertainty highlighting must be configurable in UI.
 - Red wavy underline is the initial high-uncertainty marker.
 - Multiple sentence edits in a single paragraph are supported before submission.
@@ -45,10 +52,10 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
   - User correction
   - Classification tag
 
-## 5. Privacy Requirement
+## 6. Privacy Requirement
 Users must be able to use the system without storing personal information, including edit history.
 
-## 6. Open Decisions
+## 7. Open Decisions
 - Final UI control for threshold (toggle vs slider).
 - Whether privacy-preserving mode is default or explicitly confirmed at submission.
 - Future uncertainty visuals beyond red wavy underline (label/icon/background variants).
