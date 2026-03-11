@@ -108,3 +108,23 @@ body {
   gap: 8px;
   margin-top: 10px;
 }
+
+.submit-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.privacy-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.success-text {
+  color: #0a6640;
+  margin: 0;
+}

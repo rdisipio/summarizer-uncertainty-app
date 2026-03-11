@@ -13,6 +13,9 @@ export function App() {
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmittingChanges, setIsSubmittingChanges] = useState(false);
+  const [storePersonalData, setStorePersonalData] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleGenerate = async (style) => {
@@ -24,6 +27,7 @@ export function App() {
 
     setIsLoading(true);
     setErrorMessage("");
+    setSubmitMessage("");
     setSelectedStyle(style);
 
     try {
@@ -93,6 +97,51 @@ export function App() {
     setEditorialCards((previousCards) =>
       previousCards.map((card) => (card.id === cardId ? { ...card, tag } : card))
     );
+  };
+
+  const handleSubmitChanges = async () => {
+    if (editorialCards.length === 0) {
+      setErrorMessage("No editorial changes to submit.");
+      return;
+    }
+
+    setIsSubmittingChanges(true);
+    setErrorMessage("");
+    setSubmitMessage("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/editorial-changes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          source_text: sourceText,
+          style: selectedStyle || null,
+          summary: generatedSummary,
+          store_personal_data: storePersonalData,
+          edits: editorialCards.map((card) => ({
+            sentence: card.sentence,
+            correction: card.correction,
+            tag: card.tag,
+            created_at: card.createdAt
+          }))
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Submit failed with status ${response.status}.`);
+      }
+
+      const data = await response.json();
+      setSubmitMessage(
+        `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).`
+      );
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unknown error.");
+    } finally {
+      setIsSubmittingChanges(false);
+    }
   };
 
   return (
@@ -191,6 +240,23 @@ export function App() {
                 </div>
               </Card>
             ))}
+            <div className="submit-controls">
+              <label className="privacy-checkbox">
+                <input
+                  type="checkbox"
+                  checked={storePersonalData}
+                  onChange={(event) => setStorePersonalData(event.target.checked)}
+                />
+                Store personal information in profile/history
+              </label>
+              <Button
+                intent="success"
+                text="Submit Changes"
+                loading={isSubmittingChanges}
+                onClick={handleSubmitChanges}
+              />
+            </div>
+            {submitMessage ? <p className="success-text">{submitMessage}</p> : null}
           </section>
         ) : null}
       </Card>

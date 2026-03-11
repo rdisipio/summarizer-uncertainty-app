@@ -22,7 +22,8 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
     - `factual error`
     - `cultural mismatch`
 12. User edits multiple sentences if needed.
-13. User submits all edits.
+13. User chooses whether personal profile/history storage is enabled (default: disabled).
+14. User submits all edits to backend.
 
 ## 3. Technical Architecture (Initial)
 - Frontend (React + Blueprint):
@@ -33,7 +34,8 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
   - Receive source paragraph and rewrite mode.
   - Orchestrate LLM rewrite via OpenRouter.
   - Compute and return uncertainty metadata per sentence.
-  - Accept and process submitted user edits.
+  - Accept submitted user edits via a dedicated API.
+  - Current stage: receive and acknowledge edits only (no downstream processing yet).
 
 ## 4. Runtime and Deployment Plan
 - Phase 1 (current): run locally on macOS for development and iteration.
@@ -57,6 +59,7 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
 
 ## 6. Privacy Requirement
 Users must be able to use the system without storing personal information, including edit history.
+The storage option defaults to no personal storage and is user-controlled at submission time.
 
 ## 7. Open Decisions
 - Final UI control for threshold (toggle vs slider).

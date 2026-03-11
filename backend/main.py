@@ -65,6 +65,34 @@ class SummarizeResponse(BaseModel):
     sentences: list[SentenceUncertainty]
 
 
+class EditorialChange(BaseModel):
+    """One user-proposed editorial change."""
+
+    sentence: str = Field(min_length=1)
+    correction: str
+    tag: Literal["editorial refinement", "factual error", "cultural mismatch"]
+    created_at: str
+
+
+class EditorialChangesRequest(BaseModel):
+    """Payload for submitting staged editorial changes."""
+
+    source_text: str = Field(min_length=1)
+    style: RewriteStyle | None = None
+    summary: str = Field(min_length=1)
+    store_personal_data: bool = False
+    edits: list[EditorialChange]
+
+
+class EditorialChangesResponse(BaseModel):
+    """Acknowledgement payload for editorial change submissions."""
+
+    status: Literal["accepted"]
+    received_at: str
+    edits_received: int
+    store_personal_data: bool
+
+
 def _utc_iso_now() -> str:
     """Return the current UTC timestamp in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat()
@@ -149,4 +177,35 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         response.metadata.request_completed_at,
     )
 
+    return response
+
+
+@backend.post("/api/editorial-changes", response_model=EditorialChangesResponse)
+def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChangesResponse:
+    """Receive staged editorial changes without applying business processing."""
+    received_at = _utc_iso_now()
+    logger.info(
+        (
+            "Editorial changes received | style=%s edits=%s "
+            "store_personal_data=%s summary_length=%s source_length=%s"
+        ),
+        payload.style,
+        len(payload.edits),
+        payload.store_personal_data,
+        len(payload.summary),
+        len(payload.source_text),
+    )
+
+    response = EditorialChangesResponse(
+        status="accepted",
+        received_at=received_at,
+        edits_received=len(payload.edits),
+        store_personal_data=payload.store_personal_data,
+    )
+    logger.info(
+        "Editorial changes accepted | edits_received=%s store_personal_data=%s received_at=%s",
+        response.edits_received,
+        response.store_personal_data,
+        response.received_at,
+    )
     return response

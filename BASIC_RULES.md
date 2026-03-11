@@ -34,6 +34,7 @@ This document defines engineering constraints and implementation standards.
 - Original user text is sent to the backend for processing.
 - LLM calls are performed by the backend through OpenRouter.
 - Provide a mode/flow where no personal information or edit history is persisted.
+- Default submission behavior should keep personal profile/history storage disabled unless explicitly enabled by the user.
 
 ## Design Constraints
 The product should align with Dieter Rams' 10 principles of design:
