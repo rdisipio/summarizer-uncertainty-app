@@ -1,5 +1,6 @@
 """FastAPI application entrypoint for summarization mock APIs."""
 
+import logging
 from datetime import datetime, timezone
 from random import random
 from typing import Literal
@@ -8,18 +9,31 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-MOCK_SUMMARY_SENTENCES = [
-    "This is the generated summary.",
-    "A summary has been created by the AI agent.",
-]
+RewriteStyle = Literal["shorten", "professional", "colloquial"]
+
+MOCK_SUMMARY_SENTENCES_BY_STYLE: dict[RewriteStyle, list[str]] = {
+    "shorten": [
+        "This is the generated summary.",
+        "A summary has been created by the AI agent.",
+    ],
+    "professional": [
+        "This is the generated summary.",
+        "A professional summary has been created by the AI agent.",
+    ],
+    "colloquial": [
+        "This is the generated summary.",
+        "The AI agent put together this summary in a casual tone.",
+    ],
+}
 DEFAULT_LLM_VERSION = "openrouter/mock-v1"
+logger = logging.getLogger("uvicorn.error")
 
 
 class SummarizeRequest(BaseModel):
     """Input payload for text summarization."""
 
     text: str = Field(min_length=1)
-    style: Literal["shorten", "professional", "colloquial"]
+    style: RewriteStyle
     threshold: float = Field(default=0.5, ge=0.0, le=2.0)
 
 
@@ -76,10 +90,18 @@ def health() -> dict[str, str]:
 @backend.post("/api/summarize", response_model=SummarizeResponse)
 def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     """Return a mock summary with random uncertainty values per sentence."""
+    logger.info(
+        "Summarize request received | style=%s threshold=%s text=%r",
+        payload.style,
+        payload.threshold,
+        payload.text,
+    )
     accepted_at = _utc_iso_now()
 
+    summary_sentences = MOCK_SUMMARY_SENTENCES_BY_STYLE[payload.style]
+
     sentence_payloads: list[SentenceUncertainty] = []
-    for sentence in MOCK_SUMMARY_SENTENCES:
+    for sentence in summary_sentences:
         ambiguity = round(random(), 4)
         risk = round(random(), 4)
         uncertainty = round(ambiguity + risk, 4)
@@ -104,6 +126,6 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         metadata=metadata,
         style=payload.style,
         threshold=payload.threshold,
-        summary=" ".join(MOCK_SUMMARY_SENTENCES),
+        summary=" ".join(summary_sentences),
         sentences=sentence_payloads,
     )

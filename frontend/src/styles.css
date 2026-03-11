@@ -50,13 +50,9 @@ body {
   border-top: 1px solid #d8e1e8;
 }
 
-.metadata-block p {
-  margin: 4px 0;
-}
-
-.sentence-list {
+.summary-text {
   margin: 0;
-  padding-left: 18px;
+  line-height: 1.6;
 }
 
 .uncertain-underline {

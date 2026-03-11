@@ -59,3 +59,6 @@ Users must be able to use the system without storing personal information, inclu
 - Final UI control for threshold (toggle vs slider).
 - Whether privacy-preserving mode is default or explicitly confirmed at submission.
 - Future uncertainty visuals beyond red wavy underline (label/icon/background variants).
+
+## 8. User Story Addendum
+- As a user, I can switch from one editorial style button to another after a result is shown, and the system regenerates and replaces the summary with the newly selected style output.

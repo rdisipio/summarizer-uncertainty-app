@@ -8,7 +8,6 @@ export function App() {
   const [threshold, setThreshold] = useState(0.5);
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [sentences, setSentences] = useState([]);
-  const [metadata, setMetadata] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -42,11 +41,9 @@ export function App() {
       const data = await response.json();
       setGeneratedSummary(data.summary || "");
       setSentences(Array.isArray(data.sentences) ? data.sentences : []);
-      setMetadata(data.metadata || null);
     } catch (error) {
       setGeneratedSummary("");
       setSentences([]);
-      setMetadata(null);
       setErrorMessage(error instanceof Error ? error.message : "Unknown error.");
     } finally {
       setIsLoading(false);
@@ -100,30 +97,17 @@ export function App() {
         {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
         {generatedSummary ? (
           <div className="output-block">
-            <p className="muted">Generated summary</p>
-            <p>{generatedSummary}</p>
-            {metadata ? (
-              <div className="metadata-block muted">
-                <p>LLM version: {metadata.llm_version}</p>
-                <p>Accepted at: {metadata.request_accepted_at}</p>
-                <p>Completed at: {metadata.request_completed_at}</p>
-              </div>
-            ) : null}
-            <p className="muted">Sentence uncertainty</p>
-            <ul className="sentence-list">
-              {sentences.map((item, index) => (
-                <li key={`${index}-${item.sentence}`}>
-                  <span className={item.should_underline ? "uncertain-underline" : ""}>
-                    {item.sentence}
-                  </span>
-                  <span className="muted">
-                    {" "}
-                    (ambiguity: {item.ambiguity}, risk: {item.risk}, uncertainty:{" "}
-                    {item.uncertainty})
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="summary-text">
+              {sentences.length > 0
+                ? sentences.map((item, index) => (
+                    <span key={`${index}-${item.sentence}`}>
+                      <span className={item.should_underline ? "uncertain-underline" : ""}>
+                        {item.sentence}
+                      </span>{" "}
+                    </span>
+                  ))
+                : generatedSummary}
+            </p>
           </div>
         ) : null}
       </Card>
