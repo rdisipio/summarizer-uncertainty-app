@@ -39,7 +39,7 @@ Users must be able to submit edits without storing personal information or edit 
 ### Backend Setup (FastAPI)
 ```bash
 pipenv install
-pipenv run uvicorn app.main:app --reload
+pipenv run uvicorn backend.main:backend --reload
 ```
 
 ### Frontend Setup (React + Blueprint)

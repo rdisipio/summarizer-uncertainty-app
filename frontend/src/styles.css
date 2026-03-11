@@ -28,6 +28,44 @@ body {
 
 .actions-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  margin-top: 12px;
+}
+
+.threshold-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.threshold-row input {
+  width: 80px;
+}
+
+.output-block {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #d8e1e8;
+}
+
+.metadata-block p {
+  margin: 4px 0;
+}
+
+.sentence-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.uncertain-underline {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: #db3737;
+}
+
+.error-text {
+  color: #c23030;
   margin-top: 12px;
 }
