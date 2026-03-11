@@ -6,6 +6,7 @@ This document defines the baseline engineering and design rules for this project
 ## Minimal Frameworks
 - React (frontend framework)
 - Blueprint (UI component library)
+- FastAPI (backend web framework)
 - OpenRouter (LLM provider integration layer)
 
 ## Backend Rules
@@ -35,3 +36,15 @@ The product should align with Dieter Rams' 10 principles of design:
 8. Good design is thorough down to the last detail.
 9. Good design is environmentally friendly.
 10. Good design is as little design as possible.
+
+### User Stories
+- As a user, I want to paste an original paragraph so I can quickly start from existing text.
+- As a user, I want to choose a rewrite mode (`shorten`, `professional`, `colloquial`) so the output matches my editorial goal.
+- As a user, I want the system to generate an LLM-edited paragraph so I can review a first draft efficiently.
+- As a user, I want uncertainty (ambiguity and risk) attached to each sentence in the LLM-edited text so I can focus on risky content.
+- As a user, I want high-uncertainty sentences marked with a red wavy underline so potential issues are immediately visible.
+- As a user, I want to click a sentence and see it highlighted and copied into a dedicated box so I can edit it with context.
+- As a user, I want to enter a correction and classify it (`editorial refinement`, `factual error`, `cultural mismatch`) so edits are structured.
+- As a user, I want to edit multiple sentences before submitting so I can review a full paragraph in one pass.
+- As a user, I want to submit all edits with one action so the workflow stays simple.
+- As a user, I want the option to avoid storing personal data and edit history so I can preserve privacy.
