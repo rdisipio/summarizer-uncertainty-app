@@ -184,17 +184,16 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
 def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChangesResponse:
     """Receive staged editorial changes without applying business processing."""
     received_at = _utc_iso_now()
-    logger.info(
-        (
-            "Editorial changes received | style=%s edits=%s "
-            "store_personal_data=%s summary_length=%s source_length=%s"
-        ),
-        payload.style,
-        len(payload.edits),
-        payload.store_personal_data,
-        len(payload.summary),
-        len(payload.source_text),
-    )
+    tag_counts = {
+        "editorial refinement": 0,
+        "factual error": 0,
+        "cultural mismatch": 0,
+    }
+    filled_corrections = 0
+    for edit in payload.edits:
+        tag_counts[edit.tag] += 1
+        if edit.correction.strip():
+            filled_corrections += 1
 
     response = EditorialChangesResponse(
         status="accepted",
@@ -203,9 +202,20 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
         store_personal_data=payload.store_personal_data,
     )
     logger.info(
-        "Editorial changes accepted | edits_received=%s store_personal_data=%s received_at=%s",
+        (
+            "Editorial changes accepted | style=%s edits_received=%s filled_corrections=%s "
+            "tags={editorial_refinement:%s,factual_error:%s,cultural_mismatch:%s} "
+            "store_personal_data=%s source_length=%s summary_length=%s received_at=%s"
+        ),
+        payload.style,
         response.edits_received,
+        filled_corrections,
+        tag_counts["editorial refinement"],
+        tag_counts["factual error"],
+        tag_counts["cultural mismatch"],
         response.store_personal_data,
+        len(payload.source_text),
+        len(payload.summary),
         response.received_at,
     )
     return response
