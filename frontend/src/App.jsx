@@ -21,21 +21,23 @@ function getUnderlineClass(sentence) {
   return "uncertain-underline-risk";
 }
 
-function getTooltipText(sentence, showUncertainty) {
+function getTooltipText(sentence, showUncertainty, thresholdFraction) {
   if (!showUncertainty) {
     return undefined;
   }
   const ambiguityPercent = Math.round(sentence.ambiguity * 100);
   const riskPercent = Math.round(sentence.risk * 100);
   const ambiguityIsDominant = sentence.ambiguity > sentence.risk;
+  const leadingValue = ambiguityIsDominant ? sentence.ambiguity : sentence.risk;
+  const shouldBoldLeading = leadingValue > thresholdFraction;
 
   return (
     <span className="uncertainty-tooltip">
-      <span className={ambiguityIsDominant ? "tooltip-strong" : ""}>
+      <span className={ambiguityIsDominant && shouldBoldLeading ? "tooltip-strong" : ""}>
         Ambiguity: {ambiguityPercent}%
       </span>
       <span>; </span>
-      <span className={!ambiguityIsDominant ? "tooltip-strong" : ""}>
+      <span className={!ambiguityIsDominant && shouldBoldLeading ? "tooltip-strong" : ""}>
         Risk: {riskPercent}%
       </span>
     </span>
@@ -71,6 +73,13 @@ export function App() {
           .map((item) => acceptedEditsBySentence[item.sentence] || item.sentence)
           .join(" ")
       : generatedSummary;
+  const previewSentences =
+    sentences.length > 0
+      ? sentences.map((item) => ({
+          text: acceptedEditsBySentence[item.sentence] || item.sentence,
+          isEdited: Boolean(acceptedEditsBySentence[item.sentence])
+        }))
+      : [];
   const stagedEditsCount = Object.keys(acceptedEditsBySentence).length;
   const hasStagedEdits = stagedEditsCount > 0;
 
@@ -343,7 +352,10 @@ export function App() {
                         className="sentence-button"
                         onClick={() => handleSentenceClick(item.sentence)}
                       >
-                        <Tooltip content={getTooltipText(item, showUncertainty)} hoverOpenDelay={80}>
+                        <Tooltip
+                          content={getTooltipText(item, showUncertainty, thresholdPercent / 100)}
+                          hoverOpenDelay={80}
+                        >
                           <span className={showUncertainty ? getUnderlineClass(item) : ""}>
                             {item.sentence}
                           </span>
@@ -360,7 +372,18 @@ export function App() {
             {hasStagedEdits ? (
               <div className="output-block">
                 <p className="section-title">Edited Preview</p>
-                <p className="paragraph-preview">{previewParagraph}</p>
+                <p className="paragraph-preview">
+                  {previewSentences.length > 0
+                    ? previewSentences.map((item, index) => (
+                        <span
+                          key={`${index}-${item.text}`}
+                          className={item.isEdited ? "edited-sentence-bold" : ""}
+                        >
+                          {item.text}{" "}
+                        </span>
+                      ))
+                    : previewParagraph}
+                </p>
               </div>
             ) : null}
           </Card>

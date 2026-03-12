@@ -204,6 +204,10 @@ body {
   white-space: pre-wrap;
 }
 
+.edited-sentence-bold {
+  font-weight: 700;
+}
+
 .sentence-button {
   background: transparent;
   border: 0;
