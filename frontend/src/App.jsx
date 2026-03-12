@@ -20,6 +20,16 @@ function getUnderlineClass(sentence) {
   return "uncertain-underline-risk";
 }
 
+function getTooltipText(sentence) {
+  if (!sentence.should_underline) {
+    return undefined;
+  }
+  if (sentence.ambiguity > sentence.risk) {
+    return `Ambiguity ${Math.round(sentence.ambiguity * 100)}%`;
+  }
+  return `Risk ${Math.round(sentence.risk * 100)}%`;
+}
+
 export function App() {
   const [sourceText, setSourceText] = useState("");
   const [threshold, setThreshold] = useState(0.5);
@@ -290,7 +300,7 @@ export function App() {
                       className="sentence-button"
                       onClick={() => handleSentenceClick(item.sentence)}
                     >
-                      <span className={getUnderlineClass(item)}>
+                      <span className={getUnderlineClass(item)} title={getTooltipText(item)}>
                         {item.sentence}
                       </span>{" "}
                     </button>
