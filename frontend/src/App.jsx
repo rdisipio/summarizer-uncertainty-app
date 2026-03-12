@@ -265,7 +265,7 @@ export function App() {
             <p className="deck">
               Paste a paragraph and choose a rewrite mode.
               <br />
-              Sentences with high uncertainty are flagged for review.
+              Click any sentence to edit it. High-uncertainty sentences are flagged automatically.
             </p>
           </div>
           <aside className="foundation-badge">
@@ -356,7 +356,9 @@ export function App() {
                           content={getTooltipText(item, showUncertainty, thresholdPercent / 100)}
                           hoverOpenDelay={80}
                         >
-                          <span className={showUncertainty ? getUnderlineClass(item) : ""}>
+                          <span
+                            className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}
+                          >
                             {item.sentence}
                           </span>
                         </Tooltip>{" "}

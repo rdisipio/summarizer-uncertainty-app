@@ -222,8 +222,15 @@ body {
   transition: background-color 120ms ease;
 }
 
-.sentence-button:hover {
-  background-color: rgba(15, 94, 135, 0.08);
+.sentence-interactive {
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 1px 2px;
+  transition: background-color 120ms ease;
+}
+
+.sentence-button:hover .sentence-interactive {
+  background-color: rgba(15, 94, 135, 0.1);
 }
 
 .uncertain-underline-ambiguity,
