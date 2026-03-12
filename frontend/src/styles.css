@@ -35,7 +35,15 @@ body {
 }
 
 .masthead {
+  align-items: flex-start;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
   margin-bottom: 18px;
+}
+
+.masthead-copy {
+  max-width: 760px;
 }
 
 .eyebrow {
@@ -71,6 +79,32 @@ body {
   font-size: 17px;
   line-height: 1.45;
   margin: 10px 0 0;
+}
+
+.foundation-badge {
+  align-items: center;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  max-width: 360px;
+  padding: 8px;
+}
+
+.foundation-logo {
+  border-radius: 6px;
+  display: block;
+  height: 56px;
+  object-fit: cover;
+  width: 56px;
+}
+
+.foundation-text {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+  margin: 0;
 }
 
 .notice {
@@ -297,6 +331,14 @@ body {
 }
 
 @media (max-width: 960px) {
+  .masthead {
+    flex-direction: column;
+  }
+
+  .foundation-badge {
+    max-width: 100%;
+  }
+
   .workspace-grid {
     grid-template-columns: 1fr;
   }

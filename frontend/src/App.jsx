@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Card, H3, HTMLSelect, TextArea, Tooltip } from "@blueprintjs/core";
+import hffLogo from "../hff_logo_official.jpg";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const DEFAULT_EDIT_TAG = "editorial refinement";
@@ -241,16 +242,25 @@ export function App() {
     <main className="app-shell">
       <div className="canvas">
         <header className="masthead">
-          <p className="eyebrow">Open-source editorial platform for transparent AI summaries</p>
-          <H3>
-            <span className="title-bold">Stylo</span>{" "}
-            <span className="title-italic">Studio</span>
-          </H3>
-          <p className="deck">
-            Paste a paragraph and choose a rewrite mode.
-            <br />
-            Sentences with high uncertainty are flagged for review.
-          </p>
+          <div className="masthead-copy">
+            <p className="eyebrow">Open-source platform for transparent AI summaries</p>
+            <H3>
+              <span className="title-bold">Stylo</span>{" "}
+              <span className="title-italic">Studio</span>
+            </H3>
+            <p className="deck">
+              Paste a paragraph and choose a rewrite mode.
+              <br />
+              Sentences with high uncertainty are flagged for review.
+            </p>
+          </div>
+          <aside className="foundation-badge">
+            <img src={hffLogo} alt="Human Feedback Foundation logo" className="foundation-logo" />
+            <div>
+              <p className="foundation-text">A project of the Human Feedback Foundation.</p>
+              <p className="foundation-text">We prototype open, human-centered futures for AI.</p>
+            </div>
+          </aside>
         </header>
 
         {errorMessage ? <p className="notice error-text">{errorMessage}</p> : null}
