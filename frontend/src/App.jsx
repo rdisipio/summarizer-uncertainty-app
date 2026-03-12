@@ -3,7 +3,7 @@ import { Button, Card, H3, HTMLSelect, TextArea } from "@blueprintjs/core";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const DEFAULT_EDIT_TAG = "editorial refinement";
-const EDIT_TAGS = ["editorial refinement", "factual error", "cultural mismatch"];
+const EDIT_TAGS = ["editorial refinement", "factual error", "cultural bias"];
 const LLM_MODEL_OPTIONS = [
   "Gemini 3 Flash",
   "Meta Llama 3.3 70B",

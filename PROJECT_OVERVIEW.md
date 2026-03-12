@@ -21,7 +21,7 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
 12. User classifies the correction:
     - `editorial refinement` (default)
     - `factual error`
-    - `cultural mismatch`
+    - `cultural bias`
 13. User edits multiple sentences if needed.
 14. User chooses whether personal profile/history storage is enabled (default: disabled).
 15. User submits all edits to backend.

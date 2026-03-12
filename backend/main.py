@@ -82,7 +82,7 @@ class EditorialChange(BaseModel):
 
     sentence: str = Field(min_length=1)
     correction: str
-    tag: Literal["editorial refinement", "factual error", "cultural mismatch"]
+    tag: Literal["editorial refinement", "factual error", "cultural bias"]
     created_at: str
 
 
@@ -307,7 +307,7 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
     tag_counts = {
         "editorial refinement": 0,
         "factual error": 0,
-        "cultural mismatch": 0,
+        "cultural bias": 0,
     }
     filled_corrections = 0
     for edit in payload.edits:
@@ -324,7 +324,7 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
     logger.info(
         (
             "Editorial changes accepted | style=%s llm_model=%s edits_received=%s filled_corrections=%s "
-            "tags={editorial_refinement:%s,factual_error:%s,cultural_mismatch:%s} "
+            "tags={editorial_refinement:%s,factual_error:%s,cultural_bias:%s} "
             "store_personal_data=%s source_length=%s summary_length=%s received_at=%s"
         ),
         payload.style,
@@ -333,7 +333,7 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
         filled_corrections,
         tag_counts["editorial refinement"],
         tag_counts["factual error"],
-        tag_counts["cultural mismatch"],
+        tag_counts["cultural bias"],
         response.store_personal_data,
         len(payload.source_text),
         len(payload.summary),
