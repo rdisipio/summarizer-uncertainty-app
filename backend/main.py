@@ -119,9 +119,14 @@ def _resolve_model(selected_model: str) -> str:
 def _build_prompt(original_text: str, style: RewriteStyle) -> str:
     """Build the user prompt with source text and style guidance."""
     guidance = STYLE_GUIDANCE[style]
+    original_words = len(original_text.split())
+    target_words = max(12, int(original_words * 0.6))
     return (
         f"{guidance}\n\n"
-        "Rewrite the following text. Return only the rewritten paragraph.\n\n"
+        "Summarize and rewrite the following text.\n"
+        f"The output must be strictly shorter than the original ({original_words} words).\n"
+        f"Target maximum length: {target_words} words.\n"
+        "Return only one rewritten paragraph.\n\n"
         f"Original text:\n{original_text}"
     )
 
