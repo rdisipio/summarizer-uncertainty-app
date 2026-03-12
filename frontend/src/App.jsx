@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Card, H3, HTMLSelect, TextArea } from "@blueprintjs/core";
+import { Button, Card, H3, HTMLSelect, TextArea, Tooltip } from "@blueprintjs/core";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const DEFAULT_EDIT_TAG = "editorial refinement";
@@ -21,18 +21,26 @@ function getUnderlineClass(sentence) {
 }
 
 function getTooltipText(sentence) {
-  if (!sentence.should_underline) {
-    return undefined;
-  }
-  if (sentence.ambiguity > sentence.risk) {
-    return `Ambiguity ${Math.round(sentence.ambiguity * 100)}%`;
-  }
-  return `Risk ${Math.round(sentence.risk * 100)}%`;
+  const ambiguityPercent = Math.round(sentence.ambiguity * 100);
+  const riskPercent = Math.round(sentence.risk * 100);
+  const ambiguityIsDominant = sentence.ambiguity > sentence.risk;
+
+  return (
+    <span className="uncertainty-tooltip">
+      <span className={ambiguityIsDominant ? "tooltip-strong" : ""}>
+        Ambiguity: {ambiguityPercent}%
+      </span>
+      <span>; </span>
+      <span className={!ambiguityIsDominant ? "tooltip-strong" : ""}>
+        Risk: {riskPercent}%
+      </span>
+    </span>
+  );
 }
 
 export function App() {
   const [sourceText, setSourceText] = useState("");
-  const [threshold, setThreshold] = useState(0.5);
+  const [thresholdPercent, setThresholdPercent] = useState(50);
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
   const [generatedSummary, setGeneratedSummary] = useState("");
@@ -58,7 +66,8 @@ export function App() {
           .map((item) => acceptedEditsBySentence[item.sentence] || item.sentence)
           .join(" ")
       : generatedSummary;
-  const hasStagedEdits = Object.keys(acceptedEditsBySentence).length > 0;
+  const stagedEditsCount = Object.keys(acceptedEditsBySentence).length;
+  const hasStagedEdits = stagedEditsCount > 0;
 
   const handleGenerate = async (style) => {
     const text = sourceText.trim();
@@ -82,7 +91,7 @@ export function App() {
           text,
           style,
           llm_model: selectedLlmModel,
-          threshold
+          threshold: thresholdPercent / 100
         })
       });
 
@@ -230,142 +239,171 @@ export function App() {
 
   return (
     <main className="app-shell">
-      <Card className="panel" elevation={1}>
-        <H3>Summarizer Studio</H3>
-        <p className="muted">
-          Paste a paragraph and choose a rewrite mode.
-          <br />
-          Sentences with large uncertainty will be highlighted in the output.
-        </p>
-        <TextArea
-          fill
-          growVertically
-          large
-          placeholder="Paste original text here..."
-          rows={8}
-          value={sourceText}
-          onChange={(event) => setSourceText(event.target.value)}
-        />
-        <div className="actions-row">
-          <Button
-            intent={selectedStyle === "shorten" ? "primary" : "none"}
-            text="Shorten"
-            loading={isLoading}
-            onClick={() => handleGenerate("shorten")}
-          />
-          <Button
-            intent={selectedStyle === "professional" ? "primary" : "none"}
-            text="Professional"
-            loading={isLoading}
-            onClick={() => handleGenerate("professional")}
-          />
-          <Button
-            intent={selectedStyle === "informal" ? "primary" : "none"}
-            text="Informal"
-            loading={isLoading}
-            onClick={() => handleGenerate("informal")}
-          />
-        </div>
-        <div className="threshold-row">
-          <label htmlFor="llm-model-input">LLM model</label>
-          <HTMLSelect
-            id="llm-model-input"
-            options={LLM_MODEL_OPTIONS}
-            value={selectedLlmModel}
-            onChange={(event) => setSelectedLlmModel(event.target.value)}
-          />
-        </div>
-        <div className="threshold-row">
-          <label htmlFor="threshold-input">Uncertainty threshold</label>
-          <input
-            id="threshold-input"
-            type="number"
-            min="0"
-            max="2"
-            step="0.1"
-            value={threshold}
-            onChange={(event) => setThreshold(Number(event.target.value) || 0)}
-          />
-        </div>
-        {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
-        {generatedSummary ? (
-          <div className="output-block">
-            <p className="muted">Generated summary</p>
-            <p className="summary-text">
-              {sentences.length > 0
-                ? sentences.map((item, index) => (
-                    <button
-                      key={`${index}-${item.sentence}`}
-                      type="button"
-                      className="sentence-button"
-                      onClick={() => handleSentenceClick(item.sentence)}
-                    >
-                      <span className={getUnderlineClass(item)} title={getTooltipText(item)}>
-                        {item.sentence}
-                      </span>{" "}
+      <div className="canvas">
+        <header className="masthead">
+          <p className="eyebrow">Open-source editorial platform for transparent AI summaries</p>
+          <H3>
+            <span className="title-bold">Stylo</span>{" "}
+            <span className="title-italic">Studio</span>
+          </H3>
+          <p className="deck">
+            Paste a paragraph and choose a rewrite mode.
+            <br />
+            Sentences with high uncertainty are flagged for review.
+          </p>
+        </header>
+
+        {errorMessage ? <p className="notice error-text">{errorMessage}</p> : null}
+        {submitMessage ? <p className="notice success-text">{submitMessage}</p> : null}
+
+        <section className="workspace-grid">
+          <Card className="panel source-panel" elevation={1}>
+            <p className="section-title">Source Paragraph</p>
+            <TextArea
+              fill
+              growVertically
+              large
+              placeholder="Paste original text here..."
+              rows={10}
+              value={sourceText}
+              onChange={(event) => setSourceText(event.target.value)}
+            />
+            <div className="actions-row">
+              <Button
+                intent={selectedStyle === "shorten" ? "primary" : "none"}
+                text="Shorten"
+                loading={isLoading}
+                onClick={() => handleGenerate("shorten")}
+              />
+              <Button
+                intent={selectedStyle === "professional" ? "primary" : "none"}
+                text="Professional"
+                loading={isLoading}
+                onClick={() => handleGenerate("professional")}
+              />
+              <Button
+                intent={selectedStyle === "informal" ? "primary" : "none"}
+                text="Informal"
+                loading={isLoading}
+                onClick={() => handleGenerate("informal")}
+              />
+            </div>
+            <div className="settings-grid">
+              <label className="setting-item" htmlFor="llm-model-input">
+                <span>LLM model</span>
+                <HTMLSelect
+                  id="llm-model-input"
+                  options={LLM_MODEL_OPTIONS}
+                  value={selectedLlmModel}
+                  onChange={(event) => setSelectedLlmModel(event.target.value)}
+                />
+              </label>
+              <label className="setting-item" htmlFor="threshold-input">
+                <span>Uncertainty threshold (%)</span>
+                <input
+                  id="threshold-input"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={thresholdPercent}
+                  onChange={(event) => setThresholdPercent(Number(event.target.value) || 0)}
+                />
+              </label>
+            </div>
+          </Card>
+
+          <Card className="panel result-panel" elevation={1}>
+            <div className="result-header">
+              <p className="section-title">AI Generated Draft</p>
+              <span className="staged-chip">{stagedEditsCount} staged</span>
+            </div>
+            {generatedSummary ? (
+              <p className="summary-text">
+                {sentences.length > 0
+                  ? sentences.map((item, index) => (
+                      <button
+                        key={`${index}-${item.sentence}`}
+                        type="button"
+                        className="sentence-button"
+                        onClick={() => handleSentenceClick(item.sentence)}
+                      >
+                      <Tooltip content={getTooltipText(item)} hoverOpenDelay={80}>
+                        <span className={getUnderlineClass(item)}>{item.sentence}</span>
+                      </Tooltip>{" "}
                     </button>
                   ))
-                : generatedSummary}
-            </p>
-          </div>
-        ) : null}
-        {hasStagedEdits ? (
-          <div className="output-block">
-            <p className="muted">Edited paragraph preview (staged edits only)</p>
-            <p className="paragraph-preview">{previewParagraph}</p>
-          </div>
-        ) : null}
+                  : generatedSummary}
+              </p>
+            ) : (
+              <p className="placeholder-text">
+                Generate a rewrite to see sentence-level uncertainty and begin editing.
+              </p>
+            )}
+            {hasStagedEdits ? (
+              <div className="output-block">
+                <p className="section-title">Edited Preview</p>
+                <p className="paragraph-preview">{previewParagraph}</p>
+              </div>
+            ) : null}
+          </Card>
+        </section>
+
         {editorialCards.length > 0 ? (
-          <section className="cards-section">
-            {editorialCards.map((card) => (
-              <Card key={card.id} className="editorial-card" elevation={1}>
-                <p className="card-timestamp muted">
-                  Created: {new Date(card.createdAt).toLocaleTimeString()}
-                </p>
-                <p className="card-sentence">{card.sentence}</p>
-                <TextArea
-                  fill
-                  growVertically
-                  placeholder="Enter your correction..."
-                  rows={3}
-                  value={card.correction}
-                  onChange={(event) => handleCorrectionChange(card.id, event.target.value)}
-                />
-                <div className="tag-row">
-                  {EDIT_TAGS.map((tagOption) => (
-                    <Button
-                      key={`${card.id}-${tagOption}`}
-                      small
-                      intent={card.tag === tagOption ? "primary" : "none"}
-                      text={tagOption}
-                      onClick={() => handleTagChange(card.id, tagOption)}
-                    />
-                  ))}
-                </div>
-                <div className="accept-row">
-                  <Button
-                    intent={card.isAccepted ? "success" : "none"}
-                    text={card.isAccepted ? "Accepted" : "Accept"}
-                    disabled={card.isAccepted}
-                    onClick={() => handleAcceptEdit(card.id)}
+          <section className="cards-pane">
+            <p className="section-title">Editorial Desk</p>
+            <section className="cards-section">
+              {editorialCards.map((card) => (
+                <Card key={card.id} className="editorial-card" elevation={1}>
+                  <p className="card-timestamp muted">
+                    Opened: {new Date(card.createdAt).toLocaleTimeString()}
+                  </p>
+                  <p className="card-sentence">{card.sentence}</p>
+                  <TextArea
+                    fill
+                    growVertically
+                    placeholder="Enter your correction..."
+                    rows={3}
+                    value={card.correction}
+                    onChange={(event) => handleCorrectionChange(card.id, event.target.value)}
                   />
-                  {card.isAccepted ? (
+                  <div className="tag-row">
+                    {EDIT_TAGS.map((tagOption) => (
+                      <Button
+                        key={`${card.id}-${tagOption}`}
+                        small
+                        intent={card.tag === tagOption ? "primary" : "none"}
+                        text={tagOption}
+                        onClick={() => handleTagChange(card.id, tagOption)}
+                      />
+                    ))}
+                  </div>
+                  <div className="accept-row">
                     <Button
-                      intent="none"
-                      text="Revert"
-                      onClick={() => handleRevertEdit(card.id)}
+                      intent={card.isAccepted ? "success" : "none"}
+                      text={card.isAccepted ? "Accepted" : "Accept"}
+                      disabled={card.isAccepted}
+                      onClick={() => handleAcceptEdit(card.id)}
                     />
-                  ) : null}
-                  {card.isAccepted ? (
-                    <span className="accept-status muted">Staged for submission</span>
-                  ) : (
-                    <span className="accept-status muted">Not staged</span>
-                  )}
-                </div>
-              </Card>
-            ))}
+                    {card.isAccepted ? (
+                      <Button
+                        intent="none"
+                        text="Revert"
+                        onClick={() => handleRevertEdit(card.id)}
+                      />
+                    ) : null}
+                    {card.isAccepted ? (
+                      <span className="accept-status muted">Staged for submission</span>
+                    ) : (
+                      <span className="accept-status muted">Not staged</span>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </section>
           </section>
         ) : null}
+
         {generatedSummary ? (
           <div className="submit-controls">
             <label className="privacy-checkbox">
@@ -384,13 +422,13 @@ export function App() {
             />
           </div>
         ) : null}
-        {submitMessage ? <p className="success-text">{submitMessage}</p> : null}
+
         {submitMessage ? (
           <div className="restart-row">
             <Button intent="none" text="Start New Paragraph" onClick={handleRestartWorkflow} />
           </div>
         ) : null}
-      </Card>
+      </div>
     </main>
   );
 }

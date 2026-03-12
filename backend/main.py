@@ -46,7 +46,7 @@ class SummarizeRequest(BaseModel):
     text: str = Field(min_length=1)
     style: RewriteStyle
     llm_model: str = Field(default=DEFAULT_LLM_VERSION, min_length=1)
-    threshold: float = Field(default=0.5, ge=0.0, le=2.0)
+    threshold: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class RequestMetadata(BaseModel):
@@ -259,7 +259,9 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
                 ambiguity=ambiguity,
                 risk=risk,
                 uncertainty=uncertainty,
-                should_underline=uncertainty > payload.threshold,
+                should_underline=(
+                    ambiguity > payload.threshold or risk > payload.threshold
+                ),
             )
         )
 
