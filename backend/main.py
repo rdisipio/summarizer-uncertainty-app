@@ -40,6 +40,17 @@ OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "http://localhost:8000")
 OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "summarizer-uncertainty-app")
 
 
+def _env_flag(name: str, default: bool) -> bool:
+    """Parse boolean environment flags safely."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
+
+
 class SummarizeRequest(BaseModel):
     """Input payload for text summarization."""
 
@@ -73,6 +84,7 @@ class SummarizeResponse(BaseModel):
     metadata: RequestMetadata
     style: str
     threshold: float
+    show_uncertainty: bool
     summary: str
     sentences: list[SentenceUncertainty]
 
@@ -276,8 +288,18 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         metadata=metadata,
         style=payload.style,
         threshold=payload.threshold,
+        show_uncertainty=SHOW_UNCERTAINTY,
         summary=summary_text,
-        sentences=sentence_payloads,
+        sentences=[
+            SentenceUncertainty(
+                sentence=item.sentence,
+                ambiguity=item.ambiguity,
+                risk=item.risk,
+                uncertainty=item.uncertainty,
+                should_underline=item.should_underline if SHOW_UNCERTAINTY else False,
+            )
+            for item in sentence_payloads
+        ],
     )
 
     underlined_count = sum(1 for item in sentence_payloads if item.should_underline)

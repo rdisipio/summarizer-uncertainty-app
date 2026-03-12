@@ -21,7 +21,10 @@ function getUnderlineClass(sentence) {
   return "uncertain-underline-risk";
 }
 
-function getTooltipText(sentence) {
+function getTooltipText(sentence, showUncertainty) {
+  if (!showUncertainty) {
+    return undefined;
+  }
   const ambiguityPercent = Math.round(sentence.ambiguity * 100);
   const riskPercent = Math.round(sentence.risk * 100);
   const ambiguityIsDominant = sentence.ambiguity > sentence.risk;
@@ -45,6 +48,7 @@ export function App() {
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
   const [generatedSummary, setGeneratedSummary] = useState("");
+  const [showUncertainty, setShowUncertainty] = useState(true);
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -102,6 +106,7 @@ export function App() {
 
       const data = await response.json();
       setGeneratedSummary(data.summary || "");
+      setShowUncertainty(data.show_uncertainty !== false);
       setSentences(Array.isArray(data.sentences) ? data.sentences : []);
       setEditorialCards([]);
     } catch (error) {
@@ -338,11 +343,13 @@ export function App() {
                         className="sentence-button"
                         onClick={() => handleSentenceClick(item.sentence)}
                       >
-                      <Tooltip content={getTooltipText(item)} hoverOpenDelay={80}>
-                        <span className={getUnderlineClass(item)}>{item.sentence}</span>
-                      </Tooltip>{" "}
-                    </button>
-                  ))
+                        <Tooltip content={getTooltipText(item, showUncertainty)} hoverOpenDelay={80}>
+                          <span className={showUncertainty ? getUnderlineClass(item) : ""}>
+                            {item.sentence}
+                          </span>
+                        </Tooltip>{" "}
+                      </button>
+                    ))
                   : generatedSummary}
               </p>
             ) : (
