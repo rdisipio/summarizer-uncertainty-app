@@ -1,32 +1,43 @@
-"""FastAPI application entrypoint for summarization mock APIs."""
+"""FastAPI application entrypoint for summarization and editorial APIs."""
 
 import logging
+import os
+import re
 from datetime import datetime, timezone
 from random import random
+from typing import Any
 from typing import Literal
 
-from fastapi import FastAPI
+import httpx
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 RewriteStyle = Literal["shorten", "professional", "informal"]
 
-MOCK_SUMMARY_SENTENCES_BY_STYLE: dict[RewriteStyle, list[str]] = {
-    "shorten": [
-        "This is the generated summary.",
-        "A summary has been created by the AI agent.",
-    ],
-    "professional": [
-        "This is the generated summary.",
-        "A professional summary has been created by the AI agent.",
-    ],
-    "informal": [
-        "This is the generated summary.",
-        "The AI agent put together this summary in a casual tone.",
-    ],
+STYLE_GUIDANCE: dict[RewriteStyle, str] = {
+    "shorten": "Make the text shorter while preserving core meaning.",
+    "professional": "Use a professional, neutral, precise editorial tone.",
+    "informal": "Use a more informal and conversational editorial tone.",
 }
-DEFAULT_LLM_VERSION = "openrouter/mock-v1"
+
+MODEL_ALIASES: dict[str, str] = {
+    "Gemini 3 Flash": "google/gemini-2.5-flash-lite",
+    "Meta Llama 3.3 70B": "meta-llama/llama-3.3-70b-instruct",
+    "OpenAI gpt-oss-20b": "openai/gpt-oss-20b",
+}
+DEFAULT_LLM_VERSION = "openai/gpt-oss-20b"
 logger = logging.getLogger("uvicorn.error")
+
+load_dotenv()
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_ENDPOINT = os.getenv(
+    "OPENROUTER_ENDPOINT", "https://openrouter.ai/api/v1/chat/completions"
+)
+OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "http://localhost:8000")
+OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "summarizer-uncertainty-app")
 
 
 class SummarizeRequest(BaseModel):
@@ -100,6 +111,106 @@ def _utc_iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _resolve_model(selected_model: str) -> str:
+    """Map UI-friendly model names to OpenRouter model identifiers."""
+    return MODEL_ALIASES.get(selected_model, selected_model)
+
+
+def _build_prompt(original_text: str, style: RewriteStyle) -> str:
+    """Build the user prompt with source text and style guidance."""
+    guidance = STYLE_GUIDANCE[style]
+    return (
+        f"{guidance}\n\n"
+        "Rewrite the following text. Return only the rewritten paragraph.\n\n"
+        f"Original text:\n{original_text}"
+    )
+
+
+def _extract_llm_text(payload: dict[str, Any]) -> str:
+    """Extract text content from OpenRouter chat completion payload."""
+    choices = payload.get("choices", [])
+    if not choices:
+        raise HTTPException(status_code=502, detail="OpenRouter returned no choices.")
+
+    message = choices[0].get("message", {})
+    content = message.get("content")
+    if isinstance(content, str):
+        text = content.strip()
+        if text:
+            return text
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                text_value = item.get("text", "")
+                if isinstance(text_value, str):
+                    parts.append(text_value)
+        joined = " ".join(part.strip() for part in parts if part.strip()).strip()
+        if joined:
+            return joined
+    raise HTTPException(status_code=502, detail="OpenRouter returned empty content.")
+
+
+def _split_sentences(text: str) -> list[str]:
+    """Split generated paragraph into display sentences."""
+    chunks = re.split(r"(?<=[.!?])\s+", text.strip())
+    sentences = [chunk.strip() for chunk in chunks if chunk.strip()]
+    return sentences if sentences else [text.strip()]
+
+
+def _generate_summary_with_openrouter(payload: SummarizeRequest) -> tuple[str, str]:
+    """Call OpenRouter and return (rewritten_text, resolved_model_version)."""
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENROUTER_API_KEY is not configured in environment.",
+        )
+
+    resolved_model = _resolve_model(payload.llm_model)
+    request_body = {
+        "model": resolved_model,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are an expert editorial assistant. "
+                    "Return only the rewritten paragraph text."
+                ),
+            },
+            {"role": "user", "content": _build_prompt(payload.text, payload.style)},
+        ],
+        "temperature": 0.2,
+    }
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": OPENROUTER_SITE_URL,
+        "X-Title": OPENROUTER_APP_NAME,
+    }
+
+    try:
+        with httpx.Client(timeout=45.0) as client:
+            llm_response = client.post(
+                OPENROUTER_ENDPOINT,
+                headers=headers,
+                json=request_body,
+            )
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"OpenRouter request failed: {exc}") from exc
+
+    if llm_response.status_code >= 400:
+        raise HTTPException(
+            status_code=502,
+            detail=f"OpenRouter error {llm_response.status_code}: {llm_response.text}",
+        )
+
+    payload_json = llm_response.json()
+    rewritten_text = _extract_llm_text(payload_json)
+    returned_model = payload_json.get("model")
+    model_version = returned_model if isinstance(returned_model, str) else resolved_model
+    return rewritten_text, model_version
+
+
 backend = FastAPI(title="Summarizer Uncertainty API", version="0.1.0")
 
 backend.add_middleware(
@@ -119,7 +230,7 @@ def health() -> dict[str, str]:
 
 @backend.post("/api/summarize", response_model=SummarizeResponse)
 def summarize(payload: SummarizeRequest) -> SummarizeResponse:
-    """Return a mock summary with random uncertainty values per sentence."""
+    """Generate a rewritten paragraph and attach uncertainty annotations."""
     logger.info(
         "Summarize request received | style=%s llm_model=%s threshold=%s text=%r",
         payload.style,
@@ -129,7 +240,8 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     )
     accepted_at = _utc_iso_now()
 
-    summary_sentences = MOCK_SUMMARY_SENTENCES_BY_STYLE[payload.style]
+    summary_text, llm_version = _generate_summary_with_openrouter(payload)
+    summary_sentences = _split_sentences(summary_text)
 
     sentence_payloads: list[SentenceUncertainty] = []
     for sentence in summary_sentences:
@@ -150,14 +262,14 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     metadata = RequestMetadata(
         request_accepted_at=accepted_at,
         request_completed_at=completed_at,
-        llm_version=payload.llm_model,
+        llm_version=llm_version,
     )
 
     response = SummarizeResponse(
         metadata=metadata,
         style=payload.style,
         threshold=payload.threshold,
-        summary=" ".join(summary_sentences),
+        summary=summary_text,
         sentences=sentence_payloads,
     )
 

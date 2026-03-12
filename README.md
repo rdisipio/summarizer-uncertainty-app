@@ -57,8 +57,12 @@ docker compose down
 ### Backend Setup (FastAPI)
 ```bash
 pipenv install
+cp .env.example .env
 pipenv run uvicorn backend.main:backend --reload
 ```
+
+Required backend env var:
+- `OPENROUTER_API_KEY` (stored in `.env`)
 
 ### Frontend Setup (React + Blueprint)
 ```bash
