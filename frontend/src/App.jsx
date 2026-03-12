@@ -149,6 +149,12 @@ export function App() {
     );
   };
 
+  const handleRevertEdit = (cardId) => {
+    setEditorialCards((previousCards) =>
+      previousCards.filter((card) => card.id !== cardId)
+    );
+  };
+
   const handleSubmitChanges = async () => {
     if (!generatedSummary) {
       setErrorMessage("Generate a summary before submitting.");
@@ -330,8 +336,16 @@ export function App() {
                   <Button
                     intent={card.isAccepted ? "success" : "none"}
                     text={card.isAccepted ? "Accepted" : "Accept"}
+                    disabled={card.isAccepted}
                     onClick={() => handleAcceptEdit(card.id)}
                   />
+                  {card.isAccepted ? (
+                    <Button
+                      intent="none"
+                      text="Revert"
+                      onClick={() => handleRevertEdit(card.id)}
+                    />
+                  ) : null}
                   {card.isAccepted ? (
                     <span className="accept-status muted">Staged for submission</span>
                   ) : (
