@@ -55,6 +55,12 @@ body {
   line-height: 1.6;
 }
 
+.paragraph-preview {
+  line-height: 1.6;
+  margin: 6px 0 10px 0;
+  white-space: pre-wrap;
+}
+
 .sentence-button {
   background: transparent;
   border: 0;
@@ -115,6 +121,17 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+
+.accept-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.accept-status {
+  font-size: 13px;
 }
 
 .submit-controls {

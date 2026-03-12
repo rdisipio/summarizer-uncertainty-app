@@ -55,6 +55,8 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
 - Editorial cards persist after edits are staged and do not auto-dismiss.
 - Only one editorial card per sentence is allowed.
 - Clicking an already-open sentence bumps its existing card to the top (newest-first / timestamp order).
+- Each editorial card has an `Accept` action that stages the edit before submission.
+- A read-only preview textbox shows the edited paragraph using only staged edits.
 - Each edit record includes:
   - Sentence reference
   - LLM-edited sentence
@@ -75,5 +77,7 @@ The storage option defaults to no personal storage and is user-controlled at sub
 - As a user, I can choose the LLM model from a dropdown before generating output.
 - As a user, I can infer whether uncertainty is mostly ambiguity or risk from underline color (blue for ambiguity-dominant, red for risk-dominant or equal).
 - As a user, I can click the same sentence again without creating duplicate cards; the existing card is moved to the top instead.
+- As a user, I can explicitly stage each edit via an `Accept` button before I submit.
+- As a user, I can preview the full edited paragraph in a read-only box before submission.
 - As a user, I can submit the generated summary even when I made no sentence-level edits (summary accepted as-is).
 - As a user, after submission I can click a restart action to clear state and begin a new paragraph workflow.

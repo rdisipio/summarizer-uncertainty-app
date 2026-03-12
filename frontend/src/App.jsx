@@ -34,6 +34,22 @@ export function App() {
   const [submitMessage, setSubmitMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  const acceptedEditsBySentence = editorialCards.reduce((accumulator, card) => {
+    const cleanedCorrection = card.correction.trim();
+    if (card.isAccepted && cleanedCorrection) {
+      accumulator[card.sentence] = cleanedCorrection;
+    }
+    return accumulator;
+  }, {});
+
+  const previewParagraph =
+    sentences.length > 0
+      ? sentences
+          .map((item) => acceptedEditsBySentence[item.sentence] || item.sentence)
+          .join(" ")
+      : generatedSummary;
+  const hasStagedEdits = Object.keys(acceptedEditsBySentence).length > 0;
+
   const handleGenerate = async (style) => {
     const text = sourceText.trim();
     if (!text) {
@@ -96,6 +112,7 @@ export function App() {
         sentence,
         correction: "",
         tag: DEFAULT_EDIT_TAG,
+        isAccepted: false,
         createdAt: clickedAt
       };
       return [newCard, ...previousCards];
@@ -105,14 +122,30 @@ export function App() {
   const handleCorrectionChange = (cardId, value) => {
     setEditorialCards((previousCards) =>
       previousCards.map((card) =>
-        card.id === cardId ? { ...card, correction: value } : card
+        card.id === cardId ? { ...card, correction: value, isAccepted: false } : card
       )
     );
   };
 
   const handleTagChange = (cardId, tag) => {
     setEditorialCards((previousCards) =>
-      previousCards.map((card) => (card.id === cardId ? { ...card, tag } : card))
+      previousCards.map((card) =>
+        card.id === cardId ? { ...card, tag, isAccepted: false } : card
+      )
+    );
+  };
+
+  const handleAcceptEdit = (cardId) => {
+    const targetCard = editorialCards.find((card) => card.id === cardId);
+    if (!targetCard || !targetCard.correction.trim()) {
+      setErrorMessage("Add a correction before accepting the edit.");
+      return;
+    }
+    setErrorMessage("");
+    setEditorialCards((previousCards) =>
+      previousCards.map((card) =>
+        card.id === cardId ? { ...card, isAccepted: true } : card
+      )
     );
   };
 
@@ -127,6 +160,15 @@ export function App() {
     setSubmitMessage("");
 
     try {
+      const stagedEdits = editorialCards
+        .filter((card) => card.isAccepted && card.correction.trim())
+        .map((card) => ({
+          sentence: card.sentence,
+          correction: card.correction,
+          tag: card.tag,
+          created_at: card.createdAt
+        }));
+
       const response = await fetch(`${API_BASE_URL}/api/editorial-changes`, {
         method: "POST",
         headers: {
@@ -138,12 +180,7 @@ export function App() {
           llm_model: selectedLlmModel,
           summary: generatedSummary,
           store_personal_data: storePersonalData,
-          edits: editorialCards.map((card) => ({
-            sentence: card.sentence,
-            correction: card.correction,
-            tag: card.tag,
-            created_at: card.createdAt
-          }))
+          edits: stagedEdits
         })
       });
 
@@ -237,6 +274,7 @@ export function App() {
         {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
         {generatedSummary ? (
           <div className="output-block">
+            <p className="muted">Generated summary</p>
             <p className="summary-text">
               {sentences.length > 0
                 ? sentences.map((item, index) => (
@@ -253,6 +291,12 @@ export function App() {
                   ))
                 : generatedSummary}
             </p>
+          </div>
+        ) : null}
+        {hasStagedEdits ? (
+          <div className="output-block">
+            <p className="muted">Edited paragraph preview (staged edits only)</p>
+            <p className="paragraph-preview">{previewParagraph}</p>
           </div>
         ) : null}
         {editorialCards.length > 0 ? (
@@ -281,6 +325,18 @@ export function App() {
                       onClick={() => handleTagChange(card.id, tagOption)}
                     />
                   ))}
+                </div>
+                <div className="accept-row">
+                  <Button
+                    intent={card.isAccepted ? "success" : "none"}
+                    text={card.isAccepted ? "Accepted" : "Accept"}
+                    onClick={() => handleAcceptEdit(card.id)}
+                  />
+                  {card.isAccepted ? (
+                    <span className="accept-status muted">Staged for submission</span>
+                  ) : (
+                    <span className="accept-status muted">Not staged</span>
+                  )}
                 </div>
               </Card>
             ))}
