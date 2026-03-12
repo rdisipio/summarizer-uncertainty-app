@@ -47,11 +47,14 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
 
 ## 5. Interaction Rules
 - Threshold-based uncertainty highlighting must be configurable in UI.
-- Red wavy underline is the initial high-uncertainty marker.
+- High-uncertainty sentences use a wavy underline color based on uncertainty type:
+  - blue when ambiguity > risk
+  - red when risk >= ambiguity
 - Multiple sentence edits in a single paragraph are supported before submission.
 - Clicking a sentence opens an editorial card for that sentence.
 - Editorial cards persist after edits are staged and do not auto-dismiss.
-- If another sentence is clicked, a new editorial card is added at the top (newest-first / timestamp order).
+- Only one editorial card per sentence is allowed.
+- Clicking an already-open sentence bumps its existing card to the top (newest-first / timestamp order).
 - Each edit record includes:
   - Sentence reference
   - LLM-edited sentence
@@ -69,3 +72,8 @@ The storage option defaults to no personal storage and is user-controlled at sub
 
 ## 8. User Story Addendum
 - As a user, I can switch from one editorial style button to another after a result is shown, and the system regenerates and replaces the summary with the newly selected style output.
+- As a user, I can choose the LLM model from a dropdown before generating output.
+- As a user, I can infer whether uncertainty is mostly ambiguity or risk from underline color (blue for ambiguity-dominant, red for risk-dominant or equal).
+- As a user, I can click the same sentence again without creating duplicate cards; the existing card is moved to the top instead.
+- As a user, I can submit the generated summary even when I made no sentence-level edits (summary accepted as-is).
+- As a user, after submission I can click a restart action to clear state and begin a new paragraph workflow.
