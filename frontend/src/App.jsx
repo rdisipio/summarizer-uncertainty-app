@@ -10,6 +10,16 @@ const LLM_MODEL_OPTIONS = [
   "OpenAI gpt-oss-20b"
 ];
 
+function getUnderlineClass(sentence) {
+  if (!sentence.should_underline) {
+    return "";
+  }
+  if (sentence.ambiguity > sentence.risk) {
+    return "uncertain-underline-ambiguity";
+  }
+  return "uncertain-underline-risk";
+}
+
 export function App() {
   const [sourceText, setSourceText] = useState("");
   const [threshold, setThreshold] = useState(0.5);
@@ -232,7 +242,7 @@ export function App() {
                       className="sentence-button"
                       onClick={() => handleSentenceClick(item.sentence)}
                     >
-                      <span className={item.should_underline ? "uncertain-underline" : ""}>
+                      <span className={getUnderlineClass(item)}>
                         {item.sentence}
                       </span>{" "}
                     </button>

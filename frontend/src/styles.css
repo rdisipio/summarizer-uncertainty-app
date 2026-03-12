@@ -71,9 +71,17 @@ body {
   background-color: rgba(138, 155, 168, 0.12);
 }
 
-.uncertain-underline {
+.uncertain-underline-ambiguity,
+.uncertain-underline-risk {
   text-decoration-line: underline;
   text-decoration-style: wavy;
+}
+
+.uncertain-underline-ambiguity {
+  text-decoration-color: #137cbd;
+}
+
+.uncertain-underline-risk {
   text-decoration-color: #db3737;
 }
 
