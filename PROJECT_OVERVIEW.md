@@ -8,30 +8,31 @@ Build an uncertainty-aware editorial workflow where users paste source text, rec
 2. User selects one rewrite mode:
    - `shorten`
    - `professional`
-   - `colloquial`
-3. Frontend sends original text + mode to backend.
-4. Backend calls LLM via OpenRouter and returns rewritten text.
-5. Backend computes sentence-level uncertainty (ambiguity, risk) on the rewritten text.
-6. Frontend renders rewritten text with uncertainty indicators.
-7. Sentences above threshold are marked with red wavy underline (initial version).
-8. User clicks a sentence to edit it.
-9. Selected sentence is highlighted in the paragraph and mirrored into a separate text box.
-10. User enters a correction in a second input box.
-11. User classifies the correction:
+   - `informal`
+3. User selects an LLM model from an available dropdown list.
+4. Frontend sends original text + mode + selected model to backend.
+5. Backend calls LLM via OpenRouter and returns rewritten text.
+6. Backend computes sentence-level uncertainty (ambiguity, risk) on the rewritten text.
+7. Frontend renders rewritten text with uncertainty indicators.
+8. Sentences above threshold are marked with red wavy underline (initial version).
+9. User clicks a sentence to edit it.
+10. Selected sentence is highlighted in the paragraph and mirrored into a separate text box.
+11. User enters a correction in a second input box.
+12. User classifies the correction:
     - `editorial refinement` (default)
     - `factual error`
     - `cultural mismatch`
-12. User edits multiple sentences if needed.
-13. User chooses whether personal profile/history storage is enabled (default: disabled).
-14. User submits all edits to backend.
+13. User edits multiple sentences if needed.
+14. User chooses whether personal profile/history storage is enabled (default: disabled).
+15. User submits all edits to backend.
 
 ## 3. Technical Architecture (Initial)
 - Frontend (React + Blueprint):
-  - Collect input paragraph and rewrite mode.
+  - Collect input paragraph, rewrite mode, and selected model.
   - Call backend APIs.
   - Render rewritten text, uncertainty marks, edit panel, and submission controls.
 - Backend (Python + FastAPI):
-  - Receive source paragraph and rewrite mode.
+  - Receive source paragraph, rewrite mode, and model selection.
   - Orchestrate LLM rewrite via OpenRouter.
   - Compute and return uncertainty metadata per sentence.
   - Accept submitted user edits via a dedicated API.

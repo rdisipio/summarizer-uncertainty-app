@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-RewriteStyle = Literal["shorten", "professional", "colloquial"]
+RewriteStyle = Literal["shorten", "professional", "informal"]
 
 MOCK_SUMMARY_SENTENCES_BY_STYLE: dict[RewriteStyle, list[str]] = {
     "shorten": [
@@ -20,7 +20,7 @@ MOCK_SUMMARY_SENTENCES_BY_STYLE: dict[RewriteStyle, list[str]] = {
         "This is the generated summary.",
         "A professional summary has been created by the AI agent.",
     ],
-    "colloquial": [
+    "informal": [
         "This is the generated summary.",
         "The AI agent put together this summary in a casual tone.",
     ],
@@ -34,6 +34,7 @@ class SummarizeRequest(BaseModel):
 
     text: str = Field(min_length=1)
     style: RewriteStyle
+    llm_model: str = Field(default=DEFAULT_LLM_VERSION, min_length=1)
     threshold: float = Field(default=0.5, ge=0.0, le=2.0)
 
 
@@ -79,6 +80,7 @@ class EditorialChangesRequest(BaseModel):
 
     source_text: str = Field(min_length=1)
     style: RewriteStyle | None = None
+    llm_model: str | None = None
     summary: str = Field(min_length=1)
     store_personal_data: bool = False
     edits: list[EditorialChange]
@@ -119,8 +121,9 @@ def health() -> dict[str, str]:
 def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     """Return a mock summary with random uncertainty values per sentence."""
     logger.info(
-        "Summarize request received | style=%s threshold=%s text=%r",
+        "Summarize request received | style=%s llm_model=%s threshold=%s text=%r",
         payload.style,
+        payload.llm_model,
         payload.threshold,
         payload.text,
     )
@@ -147,7 +150,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     metadata = RequestMetadata(
         request_accepted_at=accepted_at,
         request_completed_at=completed_at,
-        llm_version=DEFAULT_LLM_VERSION,
+        llm_version=payload.llm_model,
     )
 
     response = SummarizeResponse(
@@ -203,11 +206,12 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
     )
     logger.info(
         (
-            "Editorial changes accepted | style=%s edits_received=%s filled_corrections=%s "
+            "Editorial changes accepted | style=%s llm_model=%s edits_received=%s filled_corrections=%s "
             "tags={editorial_refinement:%s,factual_error:%s,cultural_mismatch:%s} "
             "store_personal_data=%s source_length=%s summary_length=%s received_at=%s"
         ),
         payload.style,
+        payload.llm_model,
         response.edits_received,
         filled_corrections,
         tag_counts["editorial refinement"],

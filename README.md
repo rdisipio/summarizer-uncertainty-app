@@ -7,7 +7,8 @@ A web application for uncertainty-aware editorial rewriting.
 - Rewrites the paragraph with an LLM using one selected mode:
   - `shorten`
   - `professional`
-  - `colloquial`
+  - `informal`
+- Lets the user select an LLM model from a dropdown before generation.
 - Annotates the LLM-edited text with sentence-level uncertainty (ambiguity and risk).
 - Highlights high-uncertainty sentences (initial UX: red wavy underline).
 - Lets users apply and classify sentence-level corrections before submitting.

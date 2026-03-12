@@ -1,14 +1,20 @@
 import { useState } from "react";
-import { Button, Card, H3, TextArea } from "@blueprintjs/core";
+import { Button, Card, H3, HTMLSelect, TextArea } from "@blueprintjs/core";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const DEFAULT_EDIT_TAG = "editorial refinement";
 const EDIT_TAGS = ["editorial refinement", "factual error", "cultural mismatch"];
+const LLM_MODEL_OPTIONS = [
+  "Gemini 3 Flash",
+  "Meta Llama 3.3 70B",
+  "OpenAI gpt-oss-20b"
+];
 
 export function App() {
   const [sourceText, setSourceText] = useState("");
   const [threshold, setThreshold] = useState(0.5);
   const [selectedStyle, setSelectedStyle] = useState("");
+  const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
@@ -39,6 +45,7 @@ export function App() {
         body: JSON.stringify({
           text,
           style,
+          llm_model: selectedLlmModel,
           threshold
         })
       });
@@ -100,8 +107,8 @@ export function App() {
   };
 
   const handleSubmitChanges = async () => {
-    if (editorialCards.length === 0) {
-      setErrorMessage("No editorial changes to submit.");
+    if (!generatedSummary) {
+      setErrorMessage("Generate a summary before submitting.");
       return;
     }
 
@@ -118,6 +125,7 @@ export function App() {
         body: JSON.stringify({
           source_text: sourceText,
           style: selectedStyle || null,
+          llm_model: selectedLlmModel,
           summary: generatedSummary,
           store_personal_data: storePersonalData,
           edits: editorialCards.map((card) => ({
@@ -135,13 +143,26 @@ export function App() {
 
       const data = await response.json();
       setSubmitMessage(
-        `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).`
+        data.edits_received > 0
+          ? `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).`
+          : `Summary accepted with no edits (personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).`
       );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unknown error.");
     } finally {
       setIsSubmittingChanges(false);
     }
+  };
+
+  const handleRestartWorkflow = () => {
+    setSourceText("");
+    setSelectedStyle("");
+    setGeneratedSummary("");
+    setSentences([]);
+    setEditorialCards([]);
+    setStorePersonalData(false);
+    setSubmitMessage("");
+    setErrorMessage("");
   };
 
   return (
@@ -172,10 +193,19 @@ export function App() {
             onClick={() => handleGenerate("professional")}
           />
           <Button
-            intent={selectedStyle === "colloquial" ? "primary" : "none"}
-            text="Colloquial"
+            intent={selectedStyle === "informal" ? "primary" : "none"}
+            text="Informal"
             loading={isLoading}
-            onClick={() => handleGenerate("colloquial")}
+            onClick={() => handleGenerate("informal")}
+          />
+        </div>
+        <div className="threshold-row">
+          <label htmlFor="llm-model-input">LLM model</label>
+          <HTMLSelect
+            id="llm-model-input"
+            options={LLM_MODEL_OPTIONS}
+            value={selectedLlmModel}
+            onChange={(event) => setSelectedLlmModel(event.target.value)}
           />
         </div>
         <div className="threshold-row">
@@ -240,24 +270,31 @@ export function App() {
                 </div>
               </Card>
             ))}
-            <div className="submit-controls">
-              <label className="privacy-checkbox">
-                <input
-                  type="checkbox"
-                  checked={storePersonalData}
-                  onChange={(event) => setStorePersonalData(event.target.checked)}
-                />
-                Store personal information in profile/history
-              </label>
-              <Button
-                intent="success"
-                text="Submit Changes"
-                loading={isSubmittingChanges}
-                onClick={handleSubmitChanges}
-              />
-            </div>
-            {submitMessage ? <p className="success-text">{submitMessage}</p> : null}
           </section>
+        ) : null}
+        {generatedSummary ? (
+          <div className="submit-controls">
+            <label className="privacy-checkbox">
+              <input
+                type="checkbox"
+                checked={storePersonalData}
+                onChange={(event) => setStorePersonalData(event.target.checked)}
+              />
+              Store personal information in profile/history
+            </label>
+            <Button
+              intent="success"
+              text="Submit Changes"
+              loading={isSubmittingChanges}
+              onClick={handleSubmitChanges}
+            />
+          </div>
+        ) : null}
+        {submitMessage ? <p className="success-text">{submitMessage}</p> : null}
+        {submitMessage ? (
+          <div className="restart-row">
+            <Button intent="none" text="Start New Paragraph" onClick={handleRestartWorkflow} />
+          </div>
         ) : null}
       </Card>
     </main>
