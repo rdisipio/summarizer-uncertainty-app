@@ -178,8 +178,12 @@ export function App() {
   return (
     <main className="app-shell">
       <Card className="panel" elevation={1}>
-        <H3>Summarizer Uncertainty App</H3>
-        <p className="muted">Paste a paragraph and choose a rewrite mode.</p>
+        <H3>Summarizer Studio</H3>
+        <p className="muted">
+          Paste a paragraph and choose a rewrite mode.
+          <br />
+          Sentences with large uncertainty will be highlighted in the output.
+        </p>
         <TextArea
           fill
           growVertically
