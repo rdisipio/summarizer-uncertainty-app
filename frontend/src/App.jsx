@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Card, H3, HTMLSelect, TextArea, Tooltip } from "@blueprintjs/core";
 import hffLogo from "../hff_logo_official.jpg";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const DEFAULT_EDIT_TAG = "editorial refinement";
 const EDIT_TAGS = ["editorial refinement", "factual error", "cultural bias"];
 const LLM_MODEL_OPTIONS = [
@@ -96,7 +96,7 @@ export function App() {
     setSelectedStyle(style);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/summarize`, {
+      const response = await fetch(buildApiUrl("/api/summarize"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -110,7 +110,7 @@ export function App() {
       });
 
       if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}.`);
+        throw new Error(await extractApiError(response));
       }
 
       const data = await response.json();
@@ -121,7 +121,13 @@ export function App() {
     } catch (error) {
       setGeneratedSummary("");
       setSentences([]);
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error.");
+      setErrorMessage(
+        error instanceof TypeError
+          ? "Network error: could not reach backend service."
+          : error instanceof Error
+            ? error.message
+            : "Unknown error."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -209,7 +215,7 @@ export function App() {
           created_at: card.createdAt
         }));
 
-      const response = await fetch(`${API_BASE_URL}/api/editorial-changes`, {
+      const response = await fetch(buildApiUrl("/api/editorial-changes"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -225,7 +231,7 @@ export function App() {
       });
 
       if (!response.ok) {
-        throw new Error(`Submit failed with status ${response.status}.`);
+        throw new Error(await extractApiError(response));
       }
 
       const data = await response.json();
@@ -235,7 +241,13 @@ export function App() {
           : `Summary accepted with no edits (personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).`
       );
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unknown error.");
+      setErrorMessage(
+        error instanceof TypeError
+          ? "Network error: could not reach backend service."
+          : error instanceof Error
+            ? error.message
+            : "Unknown error."
+      );
     } finally {
       setIsSubmittingChanges(false);
     }
@@ -481,3 +493,16 @@ export function App() {
     </main>
   );
 }
+  const buildApiUrl = (path) => `${API_BASE_URL}${path}`;
+
+  const extractApiError = async (response) => {
+    try {
+      const payload = await response.json();
+      if (payload && typeof payload.detail === "string") {
+        return payload.detail;
+      }
+      return `Request failed with status ${response.status}.`;
+    } catch {
+      return `Request failed with status ${response.status}.`;
+    }
+  };

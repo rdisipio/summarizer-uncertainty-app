@@ -54,6 +54,14 @@ def _env_flag(name: str, default: bool) -> bool:
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
+logger.info(
+    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s frontend_dist_exists=%s api_key_configured=%s",
+    OPENROUTER_ENDPOINT,
+    SHOW_UNCERTAINTY,
+    FRONTEND_DIST_DIR.exists(),
+    bool(OPENROUTER_API_KEY),
+)
+
 
 class SummarizeRequest(BaseModel):
     """Input payload for text summarization."""
@@ -182,6 +190,7 @@ def _split_sentences(text: str) -> list[str]:
 def _generate_summary_with_openrouter(payload: SummarizeRequest) -> tuple[str, str]:
     """Call OpenRouter and return (rewritten_text, resolved_model_version)."""
     if not OPENROUTER_API_KEY:
+        logger.error("OPENROUTER_API_KEY is missing. Cannot call OpenRouter.")
         raise HTTPException(
             status_code=500,
             detail="OPENROUTER_API_KEY is not configured in environment.",
@@ -217,9 +226,15 @@ def _generate_summary_with_openrouter(payload: SummarizeRequest) -> tuple[str, s
                 json=request_body,
             )
     except httpx.HTTPError as exc:
+        logger.exception("OpenRouter request failed: %s", exc)
         raise HTTPException(status_code=502, detail=f"OpenRouter request failed: {exc}") from exc
 
     if llm_response.status_code >= 400:
+        logger.error(
+            "OpenRouter returned error | status=%s body=%s",
+            llm_response.status_code,
+            llm_response.text[:1000],
+        )
         raise HTTPException(
             status_code=502,
             detail=f"OpenRouter error {llm_response.status_code}: {llm_response.text}",
@@ -261,7 +276,16 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     )
     accepted_at = _utc_iso_now()
 
-    summary_text, llm_version = _generate_summary_with_openrouter(payload)
+    try:
+        summary_text, llm_version = _generate_summary_with_openrouter(payload)
+    except HTTPException:
+        logger.exception(
+            "Summarize failed | style=%s llm_model=%s threshold=%s",
+            payload.style,
+            payload.llm_model,
+            payload.threshold,
+        )
+        raise
     summary_sentences = _split_sentences(summary_text)
 
     sentence_payloads: list[SentenceUncertainty] = []
