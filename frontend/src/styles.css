@@ -86,10 +86,19 @@ body {
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 10px;
+  color: inherit;
+  cursor: pointer;
   display: flex;
   gap: 10px;
   max-width: 360px;
   padding: 8px;
+  text-decoration: none;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.foundation-badge:hover {
+  box-shadow: 0 10px 24px rgba(10, 18, 28, 0.1);
+  transform: translateY(-1px);
 }
 
 .foundation-logo {

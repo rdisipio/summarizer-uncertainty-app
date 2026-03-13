@@ -268,12 +268,19 @@ export function App() {
               Click any sentence to edit it. High-uncertainty sentences are flagged automatically.
             </p>
           </div>
-          <aside className="foundation-badge">
-            <img src={hffLogo} alt="Human Feedback Foundation logo" className="foundation-logo" />
-            <div>
-              <p className="foundation-text">A project of the Human Feedback Foundation.</p>
-              <p className="foundation-text">We prototype open, human-centered futures for AI.</p>
-            </div>
+          <aside>
+            <a
+              className="foundation-badge"
+              href="https://humanfeedback.io"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <img src={hffLogo} alt="Human Feedback Foundation logo" className="foundation-logo" />
+              <div>
+                <p className="foundation-text">A project of the Human Feedback Foundation.</p>
+                <p className="foundation-text">We prototype open, human-centered futures for AI.</p>
+              </div>
+            </a>
           </aside>
         </header>
 

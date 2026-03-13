@@ -1,3 +1,12 @@
+---
+title: Stylo Studio
+emoji: 📝
+colorFrom: gray
+colorTo: blue
+sdk: docker
+app_port: 7860
+---
+
 # summarizer-uncertainty-app
 
 A web application for uncertainty-aware editorial rewriting.

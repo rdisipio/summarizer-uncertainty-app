@@ -4,6 +4,7 @@ import logging
 import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from random import random
 from typing import Any
 from typing import Literal
@@ -12,6 +13,8 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 RewriteStyle = Literal["shorten", "professional", "informal"]
@@ -49,6 +52,7 @@ def _env_flag(name: str, default: bool) -> bool:
 
 
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
+FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
 
 class SummarizeRequest(BaseModel):
@@ -364,3 +368,20 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
         response.received_at,
     )
     return response
+
+
+if FRONTEND_DIST_DIR.exists():
+    assets_dir = FRONTEND_DIST_DIR / "assets"
+    if assets_dir.exists():
+        backend.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @backend.get("/{full_path:path}", include_in_schema=False)
+    def serve_frontend(full_path: str) -> FileResponse:
+        """Serve bundled frontend files when running as a single container."""
+        if full_path.startswith("api"):
+            raise HTTPException(status_code=404, detail="Not found")
+
+        requested = FRONTEND_DIST_DIR / full_path
+        if full_path and requested.exists() and requested.is_file():
+            return FileResponse(requested)
+        return FileResponse(FRONTEND_DIST_DIR / "index.html")
