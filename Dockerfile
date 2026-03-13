@@ -20,7 +20,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir pipenv
 
 COPY Pipfile Pipfile.lock /app/
-RUN pipenv sync --system --deploy
+RUN pipenv install --system --deploy --ignore-pipfile
 
 COPY backend /app/backend
 COPY --from=frontend-build /frontend/dist /app/frontend_dist
