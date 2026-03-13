@@ -297,7 +297,14 @@ export function App() {
         </header>
 
         {errorMessage ? <p className="notice error-text">{errorMessage}</p> : null}
-        {submitMessage ? <p className="notice success-text">{submitMessage}</p> : null}
+        {submitMessage ? (
+          <>
+            <p className="notice success-text">{submitMessage}</p>
+            <p className="restart-hint muted">
+              Ready for another article? Start a new paragraph to begin a fresh review cycle.
+            </p>
+          </>
+        ) : null}
 
         <section className="workspace-grid">
           <Card className="panel source-panel" elevation={1}>
@@ -486,9 +493,6 @@ export function App() {
 
         {submitMessage ? (
           <div className="restart-row">
-            <p className="restart-hint muted">
-              Ready for another article? Start a new paragraph to begin a fresh review cycle.
-            </p>
             <Button intent="none" text="Start New Paragraph" onClick={handleRestartWorkflow} />
           </div>
         ) : null}
