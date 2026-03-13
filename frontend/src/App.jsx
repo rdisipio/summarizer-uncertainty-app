@@ -46,7 +46,7 @@ function getTooltipText(sentence, showUncertainty, thresholdFraction) {
 
 export function App() {
   const [sourceText, setSourceText] = useState("");
-  const [thresholdPercent, setThresholdPercent] = useState(50);
+  const [thresholdPercent, setThresholdPercent] = useState(65);
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
   const [generatedSummary, setGeneratedSummary] = useState("");

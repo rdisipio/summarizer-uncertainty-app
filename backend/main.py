@@ -51,13 +51,29 @@ def _env_flag(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_threshold_percent(name: str, default: float) -> float:
+    """Parse threshold percentage from env and clamp to [0, 100]."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        parsed = float(raw.strip())
+    except ValueError:
+        logger.warning("Invalid %s=%r. Falling back to default=%s.", name, raw, default)
+        return default
+    return max(0.0, min(100.0, parsed))
+
+
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
+UNCERTAINTY_THRESHOLD_PERCENT = _env_threshold_percent("UNCERTAINTY_THRESHOLD", 65.0)
+DEFAULT_UNCERTAINTY_THRESHOLD = UNCERTAINTY_THRESHOLD_PERCENT / 100.0
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
 logger.info(
-    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s frontend_dist_exists=%s api_key_configured=%s",
+    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s default_uncertainty_threshold=%s frontend_dist_exists=%s api_key_configured=%s",
     OPENROUTER_ENDPOINT,
     SHOW_UNCERTAINTY,
+    DEFAULT_UNCERTAINTY_THRESHOLD,
     FRONTEND_DIST_DIR.exists(),
     bool(OPENROUTER_API_KEY),
 )
@@ -69,7 +85,7 @@ class SummarizeRequest(BaseModel):
     text: str = Field(min_length=1)
     style: RewriteStyle
     llm_model: str = Field(default=DEFAULT_LLM_VERSION, min_length=1)
-    threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    threshold: float = Field(default=DEFAULT_UNCERTAINTY_THRESHOLD, ge=0.0, le=1.0)
 
 
 class RequestMetadata(BaseModel):
