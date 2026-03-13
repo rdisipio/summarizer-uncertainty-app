@@ -350,6 +350,10 @@ body {
   margin-top: 10px;
 }
 
+.restart-hint {
+  margin: 0 0 8px 0;
+}
+
 @media (max-width: 960px) {
   .masthead {
     flex-direction: column;

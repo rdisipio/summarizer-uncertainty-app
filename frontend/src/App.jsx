@@ -486,6 +486,9 @@ export function App() {
 
         {submitMessage ? (
           <div className="restart-row">
+            <p className="restart-hint muted">
+              Ready for another article? Start a new paragraph to begin a fresh review cycle.
+            </p>
             <Button intent="none" text="Start New Paragraph" onClick={handleRestartWorkflow} />
           </div>
         ) : null}
