@@ -449,6 +449,15 @@ if FRONTEND_DIST_DIR.exists():
     if assets_dir.exists():
         backend.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
+    def _frontend_file_response(path: Path, no_cache: bool = False) -> FileResponse:
+        """Serve frontend files with cache headers appropriate to their role."""
+        response = FileResponse(path)
+        if no_cache:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
     @backend.get("/{full_path:path}", include_in_schema=False)
     def serve_frontend(full_path: str) -> FileResponse:
         """Serve bundled frontend files when running as a single container."""
@@ -457,5 +466,6 @@ if FRONTEND_DIST_DIR.exists():
 
         requested = FRONTEND_DIST_DIR / full_path
         if full_path and requested.exists() and requested.is_file():
-            return FileResponse(requested)
-        return FileResponse(FRONTEND_DIST_DIR / "index.html")
+            return _frontend_file_response(requested)
+        # Do not cache index.html so clients always pick up the latest hashed assets.
+        return _frontend_file_response(FRONTEND_DIST_DIR / "index.html", no_cache=True)
