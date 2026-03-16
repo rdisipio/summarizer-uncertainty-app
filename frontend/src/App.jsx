@@ -315,6 +315,7 @@ export function App() {
               Click any sentence to edit it. High-uncertainty sentences are flagged automatically.
             </p>
           </div>
+          {/* Logo badge temporarily disabled for debugging.
           {showLogo ? (
             <aside>
               <a
@@ -331,6 +332,7 @@ export function App() {
               </a>
             </aside>
           ) : null}
+          */}
         </header>
 
         {errorMessage ? <p className="notice error-text">{errorMessage}</p> : null}
