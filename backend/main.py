@@ -51,6 +51,23 @@ def _env_flag(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_show_logo_flag(default: bool) -> bool:
+    """Parse SHOW_LOGO using custom mapping requested by product."""
+    raw = os.getenv("SHOW_LOGO")
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if "/" in normalized:
+        # Allow shorthand inputs like "true/0" or "false/1" from config UIs.
+        normalized = normalized.split("/", 1)[0].strip()
+    if normalized in {"true", "yes", "on", "0"}:
+        return True
+    if normalized in {"false", "no", "off", "1"}:
+        return False
+    logger.warning("Invalid SHOW_LOGO=%r. Falling back to default=%s.", raw, default)
+    return default
+
+
 def _env_threshold_percent(name: str, default: float) -> float:
     """Parse threshold percentage from env and clamp to [0, 100]."""
     raw = os.getenv(name)
@@ -65,7 +82,7 @@ def _env_threshold_percent(name: str, default: float) -> float:
 
 
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
-SHOW_LOGO = _env_flag("SHOW_LOGO", True)
+SHOW_LOGO = _env_show_logo_flag(True)
 UNCERTAINTY_THRESHOLD_PERCENT = _env_threshold_percent("UNCERTAINTY_THRESHOLD", 65.0)
 DEFAULT_UNCERTAINTY_THRESHOLD = UNCERTAINTY_THRESHOLD_PERCENT / 100.0
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
