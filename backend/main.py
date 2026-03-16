@@ -52,19 +52,16 @@ def _env_flag(name: str, default: bool) -> bool:
 
 
 def _env_show_logo_flag(default: bool) -> bool:
-    """Parse SHOW_LOGO using custom mapping requested by product."""
+    """Parse SHOW_LOGO as a strict boolean string."""
     raw = os.getenv("SHOW_LOGO")
     if raw is None:
         return default
     normalized = raw.strip().lower()
-    if "/" in normalized:
-        # Allow shorthand inputs like "true/0" or "false/1" from config UIs.
-        normalized = normalized.split("/", 1)[0].strip()
-    if normalized in {"true", "yes", "on", "0"}:
+    if normalized == "true":
         return True
-    if normalized in {"false", "no", "off", "1"}:
+    if normalized == "false":
         return False
-    logger.warning("Invalid SHOW_LOGO=%r. Falling back to default=%s.", raw, default)
+    logger.warning("Invalid SHOW_LOGO=%r. Use 'true' or 'false'. Falling back to default=%s.", raw, default)
     return default
 
 
