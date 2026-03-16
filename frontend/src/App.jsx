@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, H3, HTMLSelect, TextArea, Tooltip } from "@blueprintjs/core";
 import hffLogo from "../hff_logo_official.jpg";
 
@@ -10,6 +10,19 @@ const LLM_MODEL_OPTIONS = [
   "Meta Llama 3.3 70B",
   "OpenAI gpt-oss-20b"
 ];
+const buildApiUrl = (path) => `${API_BASE_URL}${path}`;
+
+const extractApiError = async (response) => {
+  try {
+    const payload = await response.json();
+    if (payload && typeof payload.detail === "string") {
+      return payload.detail;
+    }
+    return `Request failed with status ${response.status}.`;
+  } catch {
+    return `Request failed with status ${response.status}.`;
+  }
+};
 
 function getUnderlineClass(sentence) {
   if (!sentence.should_underline) {
@@ -47,6 +60,7 @@ function getTooltipText(sentence, showUncertainty, thresholdFraction) {
 export function App() {
   const [sourceText, setSourceText] = useState("");
   const [thresholdPercent, setThresholdPercent] = useState(65);
+  const [showLogo, setShowLogo] = useState(true);
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
   const [generatedSummary, setGeneratedSummary] = useState("");
@@ -82,6 +96,27 @@ export function App() {
       : [];
   const stagedEditsCount = Object.keys(acceptedEditsBySentence).length;
   const hasStagedEdits = stagedEditsCount > 0;
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const response = await fetch(buildApiUrl("/api/config"));
+        if (!response.ok) {
+          return;
+        }
+        const config = await response.json();
+        if (typeof config.show_logo === "boolean") {
+          setShowLogo(config.show_logo);
+        }
+        if (typeof config.uncertainty_threshold_percent === "number") {
+          setThresholdPercent(config.uncertainty_threshold_percent);
+        }
+      } catch {
+        // Keep defaults if config endpoint is unavailable.
+      }
+    };
+    void loadConfig();
+  }, []);
 
   const handleGenerate = async (style) => {
     const text = sourceText.trim();
@@ -280,20 +315,22 @@ export function App() {
               Click any sentence to edit it. High-uncertainty sentences are flagged automatically.
             </p>
           </div>
-          <aside>
-            <a
-              className="foundation-badge"
-              href="https://humanfeedback.io"
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              <img src={hffLogo} alt="Human Feedback Foundation logo" className="foundation-logo" />
-              <div>
-                <p className="foundation-text">A project of the Human Feedback Foundation.</p>
-                <p className="foundation-text">We prototype open, human-centered futures for AI.</p>
-              </div>
-            </a>
-          </aside>
+          {showLogo ? (
+            <aside>
+              <a
+                className="foundation-badge"
+                href="https://humanfeedback.io"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                <img src={hffLogo} alt="Human Feedback Foundation logo" className="foundation-logo" />
+                <div>
+                  <p className="foundation-text">A project of the Human Feedback Foundation.</p>
+                  <p className="foundation-text">We prototype open, human-centered futures for AI.</p>
+                </div>
+              </a>
+            </aside>
+          ) : null}
         </header>
 
         {errorMessage ? <p className="notice error-text">{errorMessage}</p> : null}
@@ -500,16 +537,3 @@ export function App() {
     </main>
   );
 }
-  const buildApiUrl = (path) => `${API_BASE_URL}${path}`;
-
-  const extractApiError = async (response) => {
-    try {
-      const payload = await response.json();
-      if (payload && typeof payload.detail === "string") {
-        return payload.detail;
-      }
-      return `Request failed with status ${response.status}.`;
-    } catch {
-      return `Request failed with status ${response.status}.`;
-    }
-  };

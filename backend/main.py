@@ -65,14 +65,16 @@ def _env_threshold_percent(name: str, default: float) -> float:
 
 
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
+SHOW_LOGO = _env_flag("SHOW_LOGO", True)
 UNCERTAINTY_THRESHOLD_PERCENT = _env_threshold_percent("UNCERTAINTY_THRESHOLD", 65.0)
 DEFAULT_UNCERTAINTY_THRESHOLD = UNCERTAINTY_THRESHOLD_PERCENT / 100.0
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
 logger.info(
-    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s default_uncertainty_threshold=%s frontend_dist_exists=%s api_key_configured=%s",
+    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s default_uncertainty_threshold=%s frontend_dist_exists=%s api_key_configured=%s",
     OPENROUTER_ENDPOINT,
     SHOW_UNCERTAINTY,
+    SHOW_LOGO,
     DEFAULT_UNCERTAINTY_THRESHOLD,
     FRONTEND_DIST_DIR.exists(),
     bool(OPENROUTER_API_KEY),
@@ -144,6 +146,14 @@ class EditorialChangesResponse(BaseModel):
     received_at: str
     edits_received: int
     store_personal_data: bool
+
+
+class AppConfigResponse(BaseModel):
+    """Runtime app feature flags and defaults for the frontend."""
+
+    show_uncertainty: bool
+    show_logo: bool
+    uncertainty_threshold_percent: float
 
 
 def _utc_iso_now() -> str:
@@ -278,6 +288,16 @@ backend.add_middleware(
 def health() -> dict[str, str]:
     """Return a basic health payload."""
     return {"status": "ok"}
+
+
+@backend.get("/api/config", response_model=AppConfigResponse)
+def app_config() -> AppConfigResponse:
+    """Return runtime configuration consumed by the frontend."""
+    return AppConfigResponse(
+        show_uncertainty=SHOW_UNCERTAINTY,
+        show_logo=SHOW_LOGO,
+        uncertainty_threshold_percent=UNCERTAINTY_THRESHOLD_PERCENT,
+    )
 
 
 @backend.post("/api/summarize", response_model=SummarizeResponse)
