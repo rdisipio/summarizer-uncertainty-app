@@ -14,7 +14,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 RewriteStyle = Literal["shorten", "professional", "informal"]
@@ -446,8 +445,18 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
 
 if FRONTEND_DIST_DIR.exists():
     assets_dir = FRONTEND_DIST_DIR / "assets"
-    if assets_dir.exists():
-        backend.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    index_html_path = FRONTEND_DIST_DIR / "index.html"
+
+    def _current_frontend_assets() -> tuple[str | None, str | None]:
+        """Extract the current entry JS and CSS asset names from index.html."""
+        if not index_html_path.exists():
+            return None, None
+        index_html = index_html_path.read_text(encoding="utf-8")
+        js_match = re.search(r'src="/assets/([^"]+)"', index_html)
+        css_match = re.search(r'href="/assets/([^"]+\.css)"', index_html)
+        current_js = js_match.group(1) if js_match else None
+        current_css = css_match.group(1) if css_match else None
+        return current_js, current_css
 
     def _frontend_file_response(path: Path, no_cache: bool = False) -> FileResponse:
         """Serve frontend files with cache headers appropriate to their role."""
@@ -457,6 +466,35 @@ if FRONTEND_DIST_DIR.exists():
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
         return response
+
+    @backend.get("/assets/{asset_name:path}", include_in_schema=False)
+    def serve_frontend_asset(asset_name: str) -> FileResponse:
+        """Serve frontend assets and recover from stale cached entry filenames."""
+        requested = assets_dir / asset_name
+        if requested.exists() and requested.is_file():
+            return _frontend_file_response(requested)
+
+        current_js, current_css = _current_frontend_assets()
+        if asset_name.startswith("index-") and asset_name.endswith(".js") and current_js:
+            fallback_js = assets_dir / current_js
+            if fallback_js.exists():
+                logger.warning(
+                    "Serving fallback JS asset for stale request | requested=%s fallback=%s",
+                    asset_name,
+                    current_js,
+                )
+                return _frontend_file_response(fallback_js, no_cache=True)
+        if asset_name.startswith("index-") and asset_name.endswith(".css") and current_css:
+            fallback_css = assets_dir / current_css
+            if fallback_css.exists():
+                logger.warning(
+                    "Serving fallback CSS asset for stale request | requested=%s fallback=%s",
+                    asset_name,
+                    current_css,
+                )
+                return _frontend_file_response(fallback_css, no_cache=True)
+
+        raise HTTPException(status_code=404, detail="Asset not found")
 
     @backend.get("/{full_path:path}", include_in_schema=False)
     def serve_frontend(full_path: str) -> FileResponse:
