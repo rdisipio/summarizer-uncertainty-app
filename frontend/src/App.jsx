@@ -4,6 +4,11 @@ import hffLogo from "../hff_logo_official.jpg";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const DEFAULT_EDIT_TAG = "editorial refinement";
+const UNCERTAINTY_LEVELS = [
+  { label: "Low", value: 20 },
+  { label: "Mid", value: 50 },
+  { label: "High", value: 70 },
+];
 const EDIT_TAGS = ["editorial refinement", "factual error", "cultural bias"];
 const LLM_MODEL_OPTIONS = [
   "Gemini 3 Flash",
@@ -59,7 +64,7 @@ function getTooltipText(sentence, showUncertainty, thresholdFraction) {
 
 export function App() {
   const [sourceText, setSourceText] = useState("");
-  const [thresholdPercent, setThresholdPercent] = useState(65);
+  const [thresholdPercent, setThresholdPercent] = useState(50);
   const [showLogo, setShowLogo] = useState(true);
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
@@ -108,9 +113,7 @@ export function App() {
         if (typeof config.show_logo === "boolean") {
           setShowLogo(config.show_logo);
         }
-        if (typeof config.uncertainty_threshold_percent === "number") {
-          setThresholdPercent(config.uncertainty_threshold_percent);
-        }
+        // threshold is now controlled by the Low/Mid/High buttons in the UI
       } catch {
         // Keep defaults if config endpoint is unavailable.
       }
@@ -387,18 +390,20 @@ export function App() {
                   onChange={(event) => setSelectedLlmModel(event.target.value)}
                 />
               </label>
-              <label className="setting-item" htmlFor="threshold-input">
-                <span>Uncertainty threshold (%)</span>
-                <input
-                  id="threshold-input"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={thresholdPercent}
-                  onChange={(event) => setThresholdPercent(Number(event.target.value) || 0)}
-                />
-              </label>
+              <div className="setting-item">
+                <span>Uncertainty threshold</span>
+                <div className="actions-row">
+                  {UNCERTAINTY_LEVELS.map(({ label, value }) => (
+                    <Button
+                      key={label}
+                      size="small"
+                      intent={thresholdPercent === value ? "primary" : "none"}
+                      text={label}
+                      onClick={() => setThresholdPercent(value)}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </Card>
 
