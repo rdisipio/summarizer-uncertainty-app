@@ -5,7 +5,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from random import random
+import random as _random
 from typing import Any
 from typing import Literal
 
@@ -76,6 +76,11 @@ def _env_threshold_percent(name: str, default: float) -> float:
         return default
     return max(0.0, min(100.0, parsed))
 
+
+HF_UNCERTAINTY_API_URL = os.getenv(
+    "HF_UNCERTAINTY_API_URL", "https://rdisipio-sentence-uncertainty.hf.space/score"
+)
+HF_UNCERTAINTY_SAMPLE_COUNT = int(os.getenv("HF_UNCERTAINTY_SAMPLE_COUNT", "20"))
 
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
 SHOW_LOGO = _env_show_logo_flag(True)
@@ -286,6 +291,67 @@ def _generate_summary_with_openrouter(payload: SummarizeRequest) -> tuple[str, s
     return rewritten_text, model_version
 
 
+def _score_sentences_with_hf_api(
+    source_text: str,
+    summary_text: str,
+    threshold: float,
+    sample_count: int,
+) -> list[SentenceUncertainty] | None:
+    """Call the HF Space sentence uncertainty API.
+
+    Returns a list of SentenceUncertainty objects using the API's sentence
+    segmentation, or None if the API is unavailable or returns no results.
+    """
+    if not HF_UNCERTAINTY_API_URL:
+        return None
+
+    seed = _random.randint(0, 99999)
+    request_body = {
+        "source": source_text,
+        "summary": summary_text,
+        "sample_count": sample_count,
+        "seed": seed,
+    }
+
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            hf_response = client.post(
+                HF_UNCERTAINTY_API_URL,
+                headers={"Content-Type": "application/json"},
+                json=request_body,
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("HF uncertainty API request failed: %s", exc)
+        return None
+
+    if hf_response.status_code >= 400:
+        logger.warning(
+            "HF uncertainty API returned error | status=%s body=%s",
+            hf_response.status_code,
+            hf_response.text[:500],
+        )
+        return None
+
+    payload = hf_response.json()
+    sentence_results = payload.get("sentence_results", [])
+    if not sentence_results:
+        return None
+
+    scored: list[SentenceUncertainty] = []
+    for item in sentence_results:
+        score = round(item.get("uncertainty_score", 0.0) / 100.0, 4)
+        scored.append(
+            SentenceUncertainty(
+                sentence=item.get("sentence_text", ""),
+                ambiguity=score,
+                risk=score,
+                uncertainty=score,
+                should_underline=score > threshold,
+            )
+        )
+    return scored or None
+
+
 backend = FastAPI(title="Summarizer Uncertainty API", version="0.1.0")
 
 backend.add_middleware(
@@ -335,24 +401,30 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             payload.threshold,
         )
         raise
-    summary_sentences = _split_sentences(summary_text)
-
-    sentence_payloads: list[SentenceUncertainty] = []
-    for sentence in summary_sentences:
-        ambiguity = round(random(), 4)
-        risk = round(random(), 4)
-        uncertainty = round((ambiguity + risk) / 2, 4)
-        sentence_payloads.append(
-            SentenceUncertainty(
-                sentence=sentence,
-                ambiguity=ambiguity,
-                risk=risk,
-                uncertainty=uncertainty,
-                should_underline=(
-                    ambiguity > payload.threshold or risk > payload.threshold
-                ),
-            )
+    sentence_payloads = _score_sentences_with_hf_api(
+        payload.text, summary_text, payload.threshold, HF_UNCERTAINTY_SAMPLE_COUNT
+    )
+    if sentence_payloads is None:
+        logger.warning(
+            "HF uncertainty API unavailable or returned no results — falling back to random scores."
         )
+        summary_sentences = _split_sentences(summary_text)
+        sentence_payloads = []
+        for sentence in summary_sentences:
+            ambiguity = round(_random.random(), 4)
+            risk = round(_random.random(), 4)
+            uncertainty = round((ambiguity + risk) / 2, 4)
+            sentence_payloads.append(
+                SentenceUncertainty(
+                    sentence=sentence,
+                    ambiguity=ambiguity,
+                    risk=risk,
+                    uncertainty=uncertainty,
+                    should_underline=(
+                        ambiguity > payload.threshold or risk > payload.threshold
+                    ),
+                )
+            )
 
     completed_at = _utc_iso_now()
     metadata = RequestMetadata(
