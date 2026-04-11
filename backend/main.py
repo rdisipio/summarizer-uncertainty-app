@@ -77,6 +77,21 @@ def _env_threshold_percent(name: str, default: float) -> float:
     return max(0.0, min(100.0, parsed))
 
 
+# Uncertainty band boundaries (as fractions, 0–1).
+# 0–0.20 → low, 0.20–0.70 → mid, ≥0.70 → high
+UNCERTAINTY_BAND_LOW_MAX = 0.20
+UNCERTAINTY_BAND_MID_MAX = 0.70
+
+
+def _uncertainty_band(score: float) -> str:
+    """Map a 0–1 uncertainty score to a display band."""
+    if score < UNCERTAINTY_BAND_LOW_MAX:
+        return "low"
+    if score < UNCERTAINTY_BAND_MID_MAX:
+        return "mid"
+    return "high"
+
+
 HF_UNCERTAINTY_API_URL = os.getenv(
     "HF_UNCERTAINTY_API_URL", "https://rdisipio-sentence-uncertainty.hf.space/score"
 )

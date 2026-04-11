@@ -29,34 +29,32 @@ const extractApiError = async (response) => {
   }
 };
 
+// Must match backend UNCERTAINTY_BAND_LOW_MAX / UNCERTAINTY_BAND_MID_MAX.
+const UNCERTAINTY_BAND_LOW_MAX = 0.20;
+const UNCERTAINTY_BAND_MID_MAX = 0.70;
+
+function getUncertaintyBand(score) {
+  if (score < UNCERTAINTY_BAND_LOW_MAX) return "low";
+  if (score < UNCERTAINTY_BAND_MID_MAX) return "mid";
+  return "high";
+}
+
 function getUnderlineClass(sentence) {
   if (!sentence.should_underline) {
     return "";
   }
-  if (sentence.ambiguity > sentence.risk) {
-    return "uncertain-underline-ambiguity";
-  }
   return "uncertain-underline-risk";
 }
 
-function getTooltipText(sentence, showUncertainty, thresholdFraction) {
+function getTooltipText(sentence, showUncertainty) {
   if (!showUncertainty) {
     return undefined;
   }
-  const ambiguityPercent = Math.round(sentence.ambiguity * 100);
-  const riskPercent = Math.round(sentence.risk * 100);
-  const ambiguityIsDominant = sentence.ambiguity > sentence.risk;
-  const leadingValue = ambiguityIsDominant ? sentence.ambiguity : sentence.risk;
-  const shouldBoldLeading = leadingValue > thresholdFraction;
-
+  const band = getUncertaintyBand(sentence.uncertainty);
   return (
     <span className="uncertainty-tooltip">
-      <span className={ambiguityIsDominant && shouldBoldLeading ? "tooltip-strong" : ""}>
-        Ambiguity: {ambiguityPercent}%
-      </span>
-      <span>; </span>
-      <span className={!ambiguityIsDominant && shouldBoldLeading ? "tooltip-strong" : ""}>
-        Risk: {riskPercent}%
+      <span className={sentence.should_underline ? "tooltip-strong" : ""}>
+        Uncertainty: {band}
       </span>
     </span>
   );
@@ -423,7 +421,7 @@ export function App() {
                         onClick={() => handleSentenceClick(item.sentence)}
                       >
                         <Tooltip
-                          content={getTooltipText(item, showUncertainty, thresholdPercent / 100)}
+                          content={getTooltipText(item, showUncertainty)}
                           hoverOpenDelay={80}
                         >
                           <span
