@@ -246,18 +246,18 @@ body {
   background-color: rgba(15, 94, 135, 0.1);
 }
 
-.uncertain-underline-ambiguity,
-.uncertain-underline-risk {
+.uncertain-underline-mid,
+.uncertain-underline-high {
   text-decoration-line: underline;
   text-decoration-style: wavy;
   text-underline-offset: 3px;
 }
 
-.uncertain-underline-ambiguity {
+.uncertain-underline-mid {
   text-decoration-color: #137cbd;
 }
 
-.uncertain-underline-risk {
+.uncertain-underline-high {
   text-decoration-color: #d33a2c;
 }
 

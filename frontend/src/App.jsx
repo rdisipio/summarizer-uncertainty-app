@@ -4,11 +4,6 @@ import hffLogo from "../hff_logo_official.jpg";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const DEFAULT_EDIT_TAG = "editorial refinement";
-const UNCERTAINTY_LEVELS = [
-  { label: "Low", value: 20 },
-  { label: "Mid", value: 50 },
-  { label: "High", value: 70 },
-];
 const EDIT_TAGS = ["editorial refinement", "factual error", "cultural bias"];
 const LLM_MODEL_OPTIONS = [
   "Gemini 3 Flash",
@@ -40,10 +35,10 @@ function getUncertaintyBand(score) {
 }
 
 function getUnderlineClass(sentence) {
-  if (!sentence.should_underline) {
-    return "";
-  }
-  return "uncertain-underline-risk";
+  const band = getUncertaintyBand(sentence.uncertainty);
+  if (band === "mid") return "uncertain-underline-mid";
+  if (band === "high") return "uncertain-underline-high";
+  return "";
 }
 
 function getTooltipText(sentence, showUncertainty) {
@@ -51,18 +46,17 @@ function getTooltipText(sentence, showUncertainty) {
     return undefined;
   }
   const band = getUncertaintyBand(sentence.uncertainty);
+  if (band === "low") return undefined;
+  const pct = Math.round(sentence.uncertainty * 100);
   return (
     <span className="uncertainty-tooltip">
-      <span className={sentence.should_underline ? "tooltip-strong" : ""}>
-        Uncertainty: {band}
-      </span>
+      Uncertainty: {band} ({pct}%)
     </span>
   );
 }
 
 export function App() {
   const [sourceText, setSourceText] = useState("");
-  const [thresholdPercent, setThresholdPercent] = useState(50);
   const [showLogo, setShowLogo] = useState(true);
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
@@ -141,7 +135,6 @@ export function App() {
           text,
           style,
           llm_model: selectedLlmModel,
-          threshold: thresholdPercent / 100
         })
       });
 
@@ -388,20 +381,6 @@ export function App() {
                   onChange={(event) => setSelectedLlmModel(event.target.value)}
                 />
               </label>
-              <div className="setting-item">
-                <span>Uncertainty threshold</span>
-                <div className="actions-row">
-                  {UNCERTAINTY_LEVELS.map(({ label, value }) => (
-                    <Button
-                      key={label}
-                      size="small"
-                      intent={thresholdPercent === value ? "primary" : "none"}
-                      text={label}
-                      onClick={() => setThresholdPercent(value)}
-                    />
-                  ))}
-                </div>
-              </div>
             </div>
           </Card>
 
