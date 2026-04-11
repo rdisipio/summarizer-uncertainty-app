@@ -166,6 +166,10 @@ body {
   gap: 6px;
 }
 
+.setting-item .actions-row {
+  margin-top: 0;
+}
+
 .setting-item input {
   border: 1px solid var(--line);
   border-radius: 8px;
