@@ -358,7 +358,7 @@ def _score_sentences_with_hf_api(
                 ambiguity=score,
                 risk=score,
                 uncertainty=score,
-                should_underline=score >= UNCERTAINTY_BAND_HIGH_LOW,
+                should_underline=_uncertainty_band(score) != "low",
             )
         )
     return scored or None
@@ -431,7 +431,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
                     ambiguity=ambiguity,
                     risk=risk,
                     uncertainty=uncertainty,
-                    should_underline=uncertainty >= UNCERTAINTY_BAND_HIGH_LOW,
+                    should_underline=_uncertainty_band(uncertainty) != "low",
                 )
             )
 
