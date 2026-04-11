@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Button, Card, H3, HTMLSelect, TextArea, Tooltip } from "@blueprintjs/core";
-import hffLogo from "../hff_logo_official.jpg";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const DEFAULT_EDIT_TAG = "editorial refinement";
@@ -46,7 +45,6 @@ function getTooltipText(sentence, showUncertainty) {
     return undefined;
   }
   const band = getUncertaintyBand(sentence.uncertainty);
-  if (band === "low") return undefined;
   const pct = Math.round(sentence.uncertainty * 100);
   return (
     <span className="uncertainty-tooltip">
@@ -57,7 +55,6 @@ function getTooltipText(sentence, showUncertainty) {
 
 export function App() {
   const [sourceText, setSourceText] = useState("");
-  const [showLogo, setShowLogo] = useState(true);
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
   const [generatedSummary, setGeneratedSummary] = useState("");
@@ -101,11 +98,7 @@ export function App() {
         if (!response.ok) {
           return;
         }
-        const config = await response.json();
-        if (typeof config.show_logo === "boolean") {
-          setShowLogo(config.show_logo);
-        }
-        // threshold is now controlled by the Low/Mid/High buttons in the UI
+        await response.json();
       } catch {
         // Keep defaults if config endpoint is unavailable.
       }
@@ -345,7 +338,6 @@ export function App() {
             <TextArea
               fill
               growVertically
-              large
               placeholder="Paste original text here..."
               rows={10}
               value={sourceText}
@@ -460,7 +452,7 @@ export function App() {
                     {EDIT_TAGS.map((tagOption) => (
                       <Button
                         key={`${card.id}-${tagOption}`}
-                        small
+                        size="small"
                         intent={card.tag === tagOption ? "primary" : "none"}
                         text={tagOption}
                         onClick={() => handleTagChange(card.id, tagOption)}
