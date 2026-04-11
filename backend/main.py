@@ -99,16 +99,15 @@ HF_UNCERTAINTY_SAMPLE_COUNT = int(os.getenv("HF_UNCERTAINTY_SAMPLE_COUNT", "20")
 
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
 SHOW_LOGO = _env_show_logo_flag(True)
-UNCERTAINTY_THRESHOLD_PERCENT = _env_threshold_percent("UNCERTAINTY_THRESHOLD", 50.0)
-DEFAULT_UNCERTAINTY_THRESHOLD = UNCERTAINTY_THRESHOLD_PERCENT / 100.0
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
 logger.info(
-    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s default_uncertainty_threshold=%s frontend_dist_exists=%s api_key_configured=%s",
+    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s band_low_max=%s band_high_low=%s frontend_dist_exists=%s api_key_configured=%s",
     OPENROUTER_ENDPOINT,
     SHOW_UNCERTAINTY,
     SHOW_LOGO,
-    DEFAULT_UNCERTAINTY_THRESHOLD,
+    UNCERTAINTY_BAND_LOW_MAX,
+    UNCERTAINTY_BAND_HIGH_LOW,
     FRONTEND_DIST_DIR.exists(),
     bool(OPENROUTER_API_KEY),
 )
@@ -120,7 +119,6 @@ class SummarizeRequest(BaseModel):
     text: str = Field(min_length=1)
     style: RewriteStyle
     llm_model: str = Field(default=DEFAULT_LLM_VERSION, min_length=1)
-    threshold: float = Field(default=DEFAULT_UNCERTAINTY_THRESHOLD, ge=0.0, le=1.0)
 
 
 class RequestMetadata(BaseModel):
@@ -146,7 +144,6 @@ class SummarizeResponse(BaseModel):
 
     metadata: RequestMetadata
     style: str
-    threshold: float
     show_uncertainty: bool
     summary: str
     sentences: list[SentenceUncertainty]
@@ -186,7 +183,6 @@ class AppConfigResponse(BaseModel):
 
     show_uncertainty: bool
     show_logo: bool
-    uncertainty_threshold_percent: float
     uncertainty_band_low_max: float
     uncertainty_band_high_low: float
 
@@ -311,7 +307,6 @@ def _generate_summary_with_openrouter(payload: SummarizeRequest) -> tuple[str, s
 def _score_sentences_with_hf_api(
     source_text: str,
     summary_text: str,
-    threshold: float,
     sample_count: int,
 ) -> list[SentenceUncertainty] | None:
     """Call the HF Space sentence uncertainty API.
@@ -363,7 +358,7 @@ def _score_sentences_with_hf_api(
                 ambiguity=score,
                 risk=score,
                 uncertainty=score,
-                should_underline=score > threshold,
+                should_underline=score >= UNCERTAINTY_BAND_HIGH_LOW,
             )
         )
     return scored or None
@@ -392,7 +387,6 @@ def app_config() -> AppConfigResponse:
     return AppConfigResponse(
         show_uncertainty=SHOW_UNCERTAINTY,
         show_logo=SHOW_LOGO,
-        uncertainty_threshold_percent=UNCERTAINTY_THRESHOLD_PERCENT,
         uncertainty_band_low_max=UNCERTAINTY_BAND_LOW_MAX,
         uncertainty_band_high_low=UNCERTAINTY_BAND_HIGH_LOW,
     )
@@ -402,10 +396,9 @@ def app_config() -> AppConfigResponse:
 def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     """Generate a rewritten paragraph and attach uncertainty annotations."""
     logger.info(
-        "Summarize request received | style=%s llm_model=%s threshold=%s text=%r",
+        "Summarize request received | style=%s llm_model=%s text=%r",
         payload.style,
         payload.llm_model,
-        payload.threshold,
         payload.text,
     )
     accepted_at = _utc_iso_now()
@@ -414,14 +407,13 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         summary_text, llm_version = _generate_summary_with_openrouter(payload)
     except HTTPException:
         logger.exception(
-            "Summarize failed | style=%s llm_model=%s threshold=%s",
+            "Summarize failed | style=%s llm_model=%s",
             payload.style,
             payload.llm_model,
-            payload.threshold,
         )
         raise
     sentence_payloads = _score_sentences_with_hf_api(
-        payload.text, summary_text, payload.threshold, HF_UNCERTAINTY_SAMPLE_COUNT
+        payload.text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT
     )
     if sentence_payloads is None:
         logger.warning(
@@ -439,9 +431,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
                     ambiguity=ambiguity,
                     risk=risk,
                     uncertainty=uncertainty,
-                    should_underline=(
-                        ambiguity > payload.threshold or risk > payload.threshold
-                    ),
+                    should_underline=uncertainty >= UNCERTAINTY_BAND_HIGH_LOW,
                 )
             )
 
@@ -455,7 +445,6 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     response = SummarizeResponse(
         metadata=metadata,
         style=payload.style,
-        threshold=payload.threshold,
         show_uncertainty=SHOW_UNCERTAINTY,
         summary=summary_text,
         sentences=[
@@ -476,11 +465,10 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     )
     logger.info(
         (
-            "Summarize response ready | style=%s threshold=%s llm_version=%s "
+            "Summarize response ready | style=%s llm_version=%s "
             "sentences=%s underlined=%s mean_uncertainty=%s accepted_at=%s completed_at=%s"
         ),
         response.style,
-        response.threshold,
         response.metadata.llm_version,
         len(response.sentences),
         underlined_count,
