@@ -365,7 +365,9 @@ def _score_sentences_with_hf_api(
 
     scored: list[SentenceUncertainty] = []
     for item in sentence_results:
-        score = round(item.get("uncertainty", 0.0), 4)
+        # uncertainty_score is the API's display-scaled value (0–100 range);
+        # store it normalised to [0, 1] so the frontend can show it as a percentage.
+        score = round(item.get("uncertainty_score", 0.0) / 100.0, 4)
         band = item.get("uncertainty_band", _uncertainty_band(score))
         scored.append(
             SentenceUncertainty(
