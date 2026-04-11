@@ -440,9 +440,17 @@ export function App() {
             <section className="cards-section">
               {editorialCards.map((card) => (
                 <Card key={card.id} className="editorial-card" elevation={1}>
-                  <p className="card-timestamp muted">
-                    Opened: {new Date(card.createdAt).toLocaleTimeString()}
-                  </p>
+                  <div className="card-header">
+                    <p className="card-timestamp muted">
+                      Opened: {new Date(card.createdAt).toLocaleTimeString()}
+                    </p>
+                    <button
+                      type="button"
+                      className="card-dismiss"
+                      aria-label="Dismiss"
+                      onClick={() => handleRevertEdit(card.id)}
+                    >×</button>
+                  </div>
                   <p className="card-sentence">{card.sentence}</p>
                   <TextArea
                     fill
@@ -470,13 +478,11 @@ export function App() {
                       disabled={card.isAccepted}
                       onClick={() => handleAcceptEdit(card.id)}
                     />
-                    {card.isAccepted ? (
-                      <Button
-                        intent="none"
-                        text="Revert"
-                        onClick={() => handleRevertEdit(card.id)}
-                      />
-                    ) : null}
+                    <Button
+                      intent="none"
+                      text={card.isAccepted ? "Revert" : "Dismiss"}
+                      onClick={() => handleRevertEdit(card.id)}
+                    />
                     {card.isAccepted ? (
                       <span className="accept-status muted">Staged for submission</span>
                     ) : (

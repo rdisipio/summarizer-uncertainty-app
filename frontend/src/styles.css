@@ -299,9 +299,30 @@ body {
   box-shadow: none;
 }
 
+.card-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
 .card-timestamp {
   font-size: 12px;
-  margin: 0 0 6px;
+  margin: 0;
+}
+
+.card-dismiss {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.card-dismiss:hover {
+  color: var(--ink);
 }
 
 .card-sentence {
