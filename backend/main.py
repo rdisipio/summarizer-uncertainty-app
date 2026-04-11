@@ -147,6 +147,8 @@ class SummarizeResponse(BaseModel):
     show_uncertainty: bool
     summary: str
     sentences: list[SentenceUncertainty]
+    band_low_max: float
+    band_high_low: float
 
 
 class EditorialChange(BaseModel):
@@ -308,11 +310,14 @@ def _score_sentences_with_hf_api(
     source_text: str,
     summary_text: str,
     sample_count: int,
-) -> list[SentenceUncertainty] | None:
+) -> tuple[list[SentenceUncertainty], float, float] | None:
     """Call the HF Space sentence uncertainty API.
 
-    Returns a list of SentenceUncertainty objects using the API's sentence
-    segmentation, or None if the API is unavailable or returns no results.
+    Returns (sentences, band_low_max, band_high_low) using the API's sentence
+    segmentation and normalization boundaries, or None if unavailable.
+    Boundaries are derived from normalization.boundaries as:
+      band_low_max  = boundaries[1]
+      band_high_low = boundaries[3]
     """
     if not HF_UNCERTAINTY_API_URL:
         return None
@@ -349,9 +354,17 @@ def _score_sentences_with_hf_api(
     if not sentence_results:
         return None
 
+    boundaries = payload.get("normalization", {}).get("boundaries", [])
+    if len(boundaries) >= 4:
+        band_low_max = boundaries[1]
+        band_high_low = boundaries[3]
+    else:
+        band_low_max = UNCERTAINTY_BAND_LOW_MAX
+        band_high_low = UNCERTAINTY_BAND_HIGH_LOW
+
     scored: list[SentenceUncertainty] = []
     for item in sentence_results:
-        score = round(item.get("uncertainty_score", 0.0) / 100.0, 4)
+        score = round(item.get("uncertainty", 0.0), 4)
         scored.append(
             SentenceUncertainty(
                 sentence=item.get("sentence_text", ""),
@@ -361,7 +374,7 @@ def _score_sentences_with_hf_api(
                 should_underline=_uncertainty_band(score) != "low",
             )
         )
-    return scored or None
+    return scored, band_low_max, band_high_low
 
 
 backend = FastAPI(title="Summarizer Uncertainty API", version="0.1.0")
@@ -412,10 +425,10 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             payload.llm_model,
         )
         raise
-    sentence_payloads = _score_sentences_with_hf_api(
+    hf_result = _score_sentences_with_hf_api(
         payload.text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT
     )
-    if sentence_payloads is None:
+    if hf_result is None:
         logger.warning(
             "HF uncertainty API unavailable or returned no results — falling back to random scores."
         )
@@ -434,6 +447,10 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
                     should_underline=_uncertainty_band(uncertainty) != "low",
                 )
             )
+        response_band_low_max = UNCERTAINTY_BAND_LOW_MAX
+        response_band_high_low = UNCERTAINTY_BAND_HIGH_LOW
+    else:
+        sentence_payloads, response_band_low_max, response_band_high_low = hf_result
 
     completed_at = _utc_iso_now()
     metadata = RequestMetadata(
@@ -447,6 +464,8 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         style=payload.style,
         show_uncertainty=SHOW_UNCERTAINTY,
         summary=summary_text,
+        band_low_max=response_band_low_max,
+        band_high_low=response_band_high_low,
         sentences=[
             SentenceUncertainty(
                 sentence=item.sentence,

@@ -143,6 +143,8 @@ export function App() {
       setGeneratedSummary(data.summary || "");
       setShowUncertainty(data.show_uncertainty !== false);
       setSentences(Array.isArray(data.sentences) ? data.sentences : []);
+      if (typeof data.band_low_max === "number") setBandLowMax(data.band_low_max);
+      if (typeof data.band_high_low === "number") setBandHighLow(data.band_high_low);
       setEditorialCards([]);
     } catch (error) {
       setGeneratedSummary("");
