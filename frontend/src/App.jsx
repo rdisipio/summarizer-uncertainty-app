@@ -23,28 +23,24 @@ const extractApiError = async (response) => {
   }
 };
 
-// Must match backend UNCERTAINTY_BAND_LOW_MAX / UNCERTAINTY_BAND_MID_MAX.
-const UNCERTAINTY_BAND_LOW_MAX = 0.20;
-const UNCERTAINTY_BAND_MID_MAX = 0.70;
-
-function getUncertaintyBand(score) {
-  if (score < UNCERTAINTY_BAND_LOW_MAX) return "low";
-  if (score < UNCERTAINTY_BAND_MID_MAX) return "mid";
+function getUncertaintyBand(score, lowMax, midMax) {
+  if (score < lowMax) return "low";
+  if (score < midMax) return "mid";
   return "high";
 }
 
-function getUnderlineClass(sentence) {
-  const band = getUncertaintyBand(sentence.uncertainty);
+function getUnderlineClass(sentence, lowMax, midMax) {
+  const band = getUncertaintyBand(sentence.uncertainty, lowMax, midMax);
   if (band === "mid") return "uncertain-underline-mid";
   if (band === "high") return "uncertain-underline-high";
   return "";
 }
 
-function getTooltipText(sentence, showUncertainty) {
+function getTooltipText(sentence, showUncertainty, lowMax, midMax) {
   if (!showUncertainty) {
     return undefined;
   }
-  const band = getUncertaintyBand(sentence.uncertainty);
+  const band = getUncertaintyBand(sentence.uncertainty, lowMax, midMax);
   const pct = Math.round(sentence.uncertainty * 100);
   return (
     <span className="uncertainty-tooltip">
@@ -55,6 +51,8 @@ function getTooltipText(sentence, showUncertainty) {
 
 export function App() {
   const [sourceText, setSourceText] = useState("");
+  const [bandLowMax, setBandLowMax] = useState(0.20);
+  const [bandHighLow, setBandHighLow] = useState(0.50);
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
   const [generatedSummary, setGeneratedSummary] = useState("");
@@ -98,7 +96,13 @@ export function App() {
         if (!response.ok) {
           return;
         }
-        await response.json();
+        const config = await response.json();
+        if (typeof config.uncertainty_band_low_max === "number") {
+          setBandLowMax(config.uncertainty_band_low_max);
+        }
+        if (typeof config.uncertainty_band_high_low === "number") {
+          setBandHighLow(config.uncertainty_band_high_low);
+        }
       } catch {
         // Keep defaults if config endpoint is unavailable.
       }
@@ -392,11 +396,11 @@ export function App() {
                         onClick={() => handleSentenceClick(item.sentence)}
                       >
                         <Tooltip
-                          content={getTooltipText(item, showUncertainty)}
+                          content={getTooltipText(item, showUncertainty, bandLowMax, bandHighLow)}
                           hoverOpenDelay={80}
                         >
                           <span
-                            className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}
+                            className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item, bandLowMax, bandHighLow) : ""}`}
                           >
                             {item.sentence}
                           </span>

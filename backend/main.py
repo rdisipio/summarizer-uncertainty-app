@@ -77,17 +77,17 @@ def _env_threshold_percent(name: str, default: float) -> float:
     return max(0.0, min(100.0, parsed))
 
 
-# Uncertainty band boundaries (as fractions, 0–1).
-# 0–0.20 → low, 0.20–0.70 → mid, ≥0.70 → high
-UNCERTAINTY_BAND_LOW_MAX = 0.20
-UNCERTAINTY_BAND_MID_MAX = 0.70
+# Uncertainty band boundaries (as fractions, 0–1), configurable via env.
+# score < LOW_MAX → low, LOW_MAX ≤ score < HIGH_LOW → mid, ≥ HIGH_LOW → high
+UNCERTAINTY_BAND_LOW_MAX = _env_threshold_percent("UNCERTAINTY_BAND_LOW_MAX", 20.0) / 100.0
+UNCERTAINTY_BAND_HIGH_LOW = _env_threshold_percent("UNCERTAINTY_BAND_HIGH_LOW", 50.0) / 100.0
 
 
 def _uncertainty_band(score: float) -> str:
     """Map a 0–1 uncertainty score to a display band."""
     if score < UNCERTAINTY_BAND_LOW_MAX:
         return "low"
-    if score < UNCERTAINTY_BAND_MID_MAX:
+    if score < UNCERTAINTY_BAND_HIGH_LOW:
         return "mid"
     return "high"
 
@@ -187,6 +187,8 @@ class AppConfigResponse(BaseModel):
     show_uncertainty: bool
     show_logo: bool
     uncertainty_threshold_percent: float
+    uncertainty_band_low_max: float
+    uncertainty_band_high_low: float
 
 
 def _utc_iso_now() -> str:
@@ -391,6 +393,8 @@ def app_config() -> AppConfigResponse:
         show_uncertainty=SHOW_UNCERTAINTY,
         show_logo=SHOW_LOGO,
         uncertainty_threshold_percent=UNCERTAINTY_THRESHOLD_PERCENT,
+        uncertainty_band_low_max=UNCERTAINTY_BAND_LOW_MAX,
+        uncertainty_band_high_low=UNCERTAINTY_BAND_HIGH_LOW,
     )
 
 
