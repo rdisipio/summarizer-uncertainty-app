@@ -23,24 +23,19 @@ const extractApiError = async (response) => {
   }
 };
 
-function getUncertaintyBand(score, lowMax, midMax) {
-  if (score < lowMax) return "low";
-  if (score < midMax) return "mid";
-  return "high";
-}
 
-function getUnderlineClass(sentence, lowMax, midMax) {
-  const band = getUncertaintyBand(sentence.uncertainty, lowMax, midMax);
+function getUnderlineClass(sentence) {
+  const band = sentence.uncertainty_band;
   if (band === "mid") return "uncertain-underline-mid";
   if (band === "high") return "uncertain-underline-high";
   return "";
 }
 
-function getTooltipText(sentence, showUncertainty, lowMax, midMax) {
+function getTooltipText(sentence, showUncertainty) {
   if (!showUncertainty) {
     return undefined;
   }
-  const band = getUncertaintyBand(sentence.uncertainty, lowMax, midMax);
+  const band = sentence.uncertainty_band;
   const pct = Math.round(sentence.uncertainty * 100);
   return (
     <span className="uncertainty-tooltip">
@@ -51,8 +46,6 @@ function getTooltipText(sentence, showUncertainty, lowMax, midMax) {
 
 export function App() {
   const [sourceText, setSourceText] = useState("");
-  const [bandLowMax, setBandLowMax] = useState(0.20);
-  const [bandHighLow, setBandHighLow] = useState(0.50);
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
   const [generatedSummary, setGeneratedSummary] = useState("");
@@ -143,8 +136,7 @@ export function App() {
       setGeneratedSummary(data.summary || "");
       setShowUncertainty(data.show_uncertainty !== false);
       setSentences(Array.isArray(data.sentences) ? data.sentences : []);
-      if (typeof data.band_low_max === "number") setBandLowMax(data.band_low_max);
-      if (typeof data.band_high_low === "number") setBandHighLow(data.band_high_low);
+
       setEditorialCards([]);
     } catch (error) {
       setGeneratedSummary("");
@@ -398,11 +390,11 @@ export function App() {
                         onClick={() => handleSentenceClick(item.sentence)}
                       >
                         <Tooltip
-                          content={getTooltipText(item, showUncertainty, bandLowMax, bandHighLow)}
+                          content={getTooltipText(item, showUncertainty)}
                           hoverOpenDelay={80}
                         >
                           <span
-                            className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item, bandLowMax, bandHighLow) : ""}`}
+                            className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}
                           >
                             {item.sentence}
                           </span>

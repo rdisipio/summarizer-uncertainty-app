@@ -136,6 +136,7 @@ class SentenceUncertainty(BaseModel):
     ambiguity: float
     risk: float
     uncertainty: float
+    uncertainty_band: str
     should_underline: bool
 
 
@@ -365,13 +366,15 @@ def _score_sentences_with_hf_api(
     scored: list[SentenceUncertainty] = []
     for item in sentence_results:
         score = round(item.get("uncertainty", 0.0), 4)
+        band = item.get("uncertainty_band", _uncertainty_band(score))
         scored.append(
             SentenceUncertainty(
                 sentence=item.get("sentence_text", ""),
                 ambiguity=score,
                 risk=score,
                 uncertainty=score,
-                should_underline=_uncertainty_band(score) != "low",
+                uncertainty_band=band,
+                should_underline=band != "low",
             )
         )
     return scored, band_low_max, band_high_low
@@ -438,13 +441,15 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             ambiguity = round(_random.random(), 4)
             risk = round(_random.random(), 4)
             uncertainty = round((ambiguity + risk) / 2, 4)
+            band = _uncertainty_band(uncertainty)
             sentence_payloads.append(
                 SentenceUncertainty(
                     sentence=sentence,
                     ambiguity=ambiguity,
                     risk=risk,
                     uncertainty=uncertainty,
-                    should_underline=_uncertainty_band(uncertainty) != "low",
+                    uncertainty_band=band,
+                    should_underline=band != "low",
                 )
             )
         response_band_low_max = UNCERTAINTY_BAND_LOW_MAX
@@ -472,6 +477,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
                 ambiguity=item.ambiguity,
                 risk=item.risk,
                 uncertainty=item.uncertainty,
+                uncertainty_band=item.uncertainty_band,
                 should_underline=item.should_underline if SHOW_UNCERTAINTY else False,
             )
             for item in sentence_payloads
