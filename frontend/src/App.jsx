@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Card, H3, HTMLSelect, TextArea, Tooltip } from "@blueprintjs/core";
+import { Button, Card, Collapse, H3, HTMLSelect, TextArea, Tooltip } from "@blueprintjs/core";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const DEFAULT_EDIT_TAG = "editorial refinement";
@@ -8,6 +8,11 @@ const LLM_MODEL_OPTIONS = [
   "Gemini 3 Flash",
   "Meta Llama 3.3 70B",
   "OpenAI gpt-oss-20b"
+];
+const THRESHOLD_LEVEL_OPTIONS = [
+  { label: "Relaxed", value: "relaxed" },
+  { label: "Normal", value: "normal" },
+  { label: "Conservative", value: "conservative" },
 ];
 const buildApiUrl = (path) => `${API_BASE_URL}${path}`;
 
@@ -48,6 +53,8 @@ export function App() {
   const [sourceText, setSourceText] = useState("");
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
+  const [selectedThresholdLevel, setSelectedThresholdLevel] = useState("normal");
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [showUncertainty, setShowUncertainty] = useState(true);
   const [sentences, setSentences] = useState([]);
@@ -126,6 +133,7 @@ export function App() {
           text,
           style,
           llm_model: selectedLlmModel,
+          threshold_level: selectedThresholdLevel,
         })
       });
 
@@ -376,17 +384,37 @@ export function App() {
                 onClick={() => handleGenerate("informal")}
               />
             </div>
-            <div className="settings-grid">
-              <label className="setting-item" htmlFor="llm-model-input">
-                <span>LLM model</span>
-                <HTMLSelect
-                  id="llm-model-input"
-                  options={LLM_MODEL_OPTIONS}
-                  value={selectedLlmModel}
-                  onChange={(event) => setSelectedLlmModel(event.target.value)}
-                />
-              </label>
-            </div>
+            <button
+              type="button"
+              className="advanced-toggle"
+              onClick={() => setShowAdvancedOptions((v) => !v)}
+              aria-expanded={showAdvancedOptions}
+            >
+              Advanced options
+              <span className={`advanced-toggle-chevron ${showAdvancedOptions ? "advanced-toggle-chevron--open" : ""}`}>›</span>
+            </button>
+            <Collapse isOpen={showAdvancedOptions}>
+              <div className="settings-grid">
+                <label className="setting-item" htmlFor="llm-model-input">
+                  <span>LLM model</span>
+                  <HTMLSelect
+                    id="llm-model-input"
+                    options={LLM_MODEL_OPTIONS}
+                    value={selectedLlmModel}
+                    onChange={(event) => setSelectedLlmModel(event.target.value)}
+                  />
+                </label>
+                <label className="setting-item" htmlFor="threshold-level-input">
+                  <span>Sensitivity</span>
+                  <HTMLSelect
+                    id="threshold-level-input"
+                    options={THRESHOLD_LEVEL_OPTIONS}
+                    value={selectedThresholdLevel}
+                    onChange={(event) => setSelectedThresholdLevel(event.target.value)}
+                  />
+                </label>
+              </div>
+            </Collapse>
           </Card>
 
           <Card className="panel result-panel" elevation={1}>

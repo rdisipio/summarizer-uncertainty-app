@@ -80,7 +80,9 @@ Backend env vars (stored in `.env`):
 | `SHOW_LOGO` | `false` | Show the Human Feedback Foundation badge. |
 | `UNCERTAINTY_BAND_LOW_MAX` | `20` | Upper bound (%) of the low uncertainty band. |
 | `UNCERTAINTY_BAND_HIGH_LOW` | `50` | Lower bound (%) of the high uncertainty band. |
-| `DUAL_SUMMARY_THRESHOLD` | `30` | Average uncertainty (%) above which two draft candidates are generated for the user to choose between. |
+| `DUAL_SUMMARY_THRESHOLD_RELAXED` | `35` | Uncertainty (%) threshold for the "Relaxed" sensitivity level. |
+| `DUAL_SUMMARY_THRESHOLD_NORMAL` | `25` | Uncertainty (%) threshold for the "Normal" sensitivity level. |
+| `DUAL_SUMMARY_THRESHOLD_CONSERVATIVE` | `15` | Uncertainty (%) threshold for the "Conservative" sensitivity level. |
 
 ### Frontend Setup (React + Blueprint)
 ```bash

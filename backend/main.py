@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 RewriteStyle = Literal["shorten", "professional", "informal"]
+ThresholdLevel = Literal["relaxed", "normal", "conservative"]
 
 STYLE_GUIDANCE: dict[RewriteStyle, str] = {
     "shorten": "Make the text shorter while preserving core meaning.",
@@ -82,8 +83,17 @@ def _env_threshold_percent(name: str, default: float) -> float:
 UNCERTAINTY_BAND_LOW_MAX = _env_threshold_percent("UNCERTAINTY_BAND_LOW_MAX", 20.0) / 100.0
 UNCERTAINTY_BAND_HIGH_LOW = _env_threshold_percent("UNCERTAINTY_BAND_HIGH_LOW", 50.0) / 100.0
 
-# When mean sentence uncertainty exceeds this threshold, two draft candidates are generated.
-DUAL_SUMMARY_THRESHOLD = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD", 30.0) / 100.0
+# Per-level thresholds for dual-draft generation.
+# When mean sentence uncertainty exceeds the selected level's threshold, two candidates are shown.
+DUAL_SUMMARY_THRESHOLD_RELAXED = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD_RELAXED", 35.0) / 100.0
+DUAL_SUMMARY_THRESHOLD_NORMAL = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD_NORMAL", 25.0) / 100.0
+DUAL_SUMMARY_THRESHOLD_CONSERVATIVE = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD_CONSERVATIVE", 15.0) / 100.0
+
+DUAL_SUMMARY_THRESHOLDS: dict[str, float] = {
+    "relaxed": DUAL_SUMMARY_THRESHOLD_RELAXED,
+    "normal": DUAL_SUMMARY_THRESHOLD_NORMAL,
+    "conservative": DUAL_SUMMARY_THRESHOLD_CONSERVATIVE,
+}
 
 
 def _uncertainty_band(score: float) -> str:
@@ -105,13 +115,15 @@ SHOW_LOGO = _env_show_logo_flag(True)
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
 logger.info(
-    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s band_low_max=%s band_high_low=%s dual_summary_threshold=%s frontend_dist_exists=%s api_key_configured=%s",
+    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s band_low_max=%s band_high_low=%s dual_threshold_relaxed=%s dual_threshold_normal=%s dual_threshold_conservative=%s frontend_dist_exists=%s api_key_configured=%s",
     OPENROUTER_ENDPOINT,
     SHOW_UNCERTAINTY,
     SHOW_LOGO,
     UNCERTAINTY_BAND_LOW_MAX,
     UNCERTAINTY_BAND_HIGH_LOW,
-    DUAL_SUMMARY_THRESHOLD,
+    DUAL_SUMMARY_THRESHOLD_RELAXED,
+    DUAL_SUMMARY_THRESHOLD_NORMAL,
+    DUAL_SUMMARY_THRESHOLD_CONSERVATIVE,
     FRONTEND_DIST_DIR.exists(),
     bool(OPENROUTER_API_KEY),
 )
@@ -123,6 +135,7 @@ class SummarizeRequest(BaseModel):
     text: str = Field(min_length=1)
     style: RewriteStyle
     llm_model: str = Field(default=DEFAULT_LLM_VERSION, min_length=1)
+    threshold_level: ThresholdLevel = "normal"
 
 
 class RequestMetadata(BaseModel):
@@ -203,7 +216,9 @@ class AppConfigResponse(BaseModel):
     show_logo: bool
     uncertainty_band_low_max: float
     uncertainty_band_high_low: float
-    dual_summary_threshold: float
+    dual_summary_threshold_relaxed: float
+    dual_summary_threshold_normal: float
+    dual_summary_threshold_conservative: float
 
 
 def _utc_iso_now() -> str:
@@ -456,7 +471,9 @@ def app_config() -> AppConfigResponse:
         show_logo=SHOW_LOGO,
         uncertainty_band_low_max=UNCERTAINTY_BAND_LOW_MAX,
         uncertainty_band_high_low=UNCERTAINTY_BAND_HIGH_LOW,
-        dual_summary_threshold=DUAL_SUMMARY_THRESHOLD,
+        dual_summary_threshold_relaxed=DUAL_SUMMARY_THRESHOLD_RELAXED,
+        dual_summary_threshold_normal=DUAL_SUMMARY_THRESHOLD_NORMAL,
+        dual_summary_threshold_conservative=DUAL_SUMMARY_THRESHOLD_CONSERVATIVE,
     )
 
 
@@ -510,7 +527,8 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     sentences_a, band_low_max, band_high_low = _get_scored_sentences(payload.text, summary_a)
     avg_a = _mean_uncertainty(sentences_a)
 
-    requires_choice = SHOW_UNCERTAINTY and avg_a > DUAL_SUMMARY_THRESHOLD
+    threshold = DUAL_SUMMARY_THRESHOLDS[payload.threshold_level]
+    requires_choice = SHOW_UNCERTAINTY and avg_a > threshold
 
     if requires_choice:
         try:
@@ -545,15 +563,16 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         )
         logger.info(
             (
-                "Dual-draft response | style=%s llm_version=%s "
+                "Dual-draft response | style=%s llm_version=%s threshold_level=%s "
                 "avg_uncertainty_a=%s avg_uncertainty_b=%s threshold=%s "
                 "accepted_at=%s completed_at=%s"
             ),
             payload.style,
             llm_version,
+            payload.threshold_level,
             avg_a,
             avg_b,
-            DUAL_SUMMARY_THRESHOLD,
+            threshold,
             accepted_at,
             completed_at,
         )

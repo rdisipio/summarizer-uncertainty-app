@@ -179,6 +179,34 @@ body {
   padding: 6px 8px;
 }
 
+.advanced-toggle {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 5px;
+  margin-top: 14px;
+  padding: 0;
+}
+
+.advanced-toggle:hover {
+  color: var(--ink);
+}
+
+.advanced-toggle-chevron {
+  display: inline-block;
+  font-style: normal;
+  transform: rotate(0deg);
+  transition: transform 150ms ease;
+}
+
+.advanced-toggle-chevron--open {
+  transform: rotate(90deg);
+}
+
 .result-header {
   align-items: center;
   display: flex;
