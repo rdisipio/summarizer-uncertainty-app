@@ -83,7 +83,7 @@ UNCERTAINTY_BAND_LOW_MAX = _env_threshold_percent("UNCERTAINTY_BAND_LOW_MAX", 20
 UNCERTAINTY_BAND_HIGH_LOW = _env_threshold_percent("UNCERTAINTY_BAND_HIGH_LOW", 50.0) / 100.0
 
 # When mean sentence uncertainty exceeds this threshold, two draft candidates are generated.
-DUAL_SUMMARY_THRESHOLD = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD", 35.0) / 100.0
+DUAL_SUMMARY_THRESHOLD = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD", 30.0) / 100.0
 
 
 def _uncertainty_band(score: float) -> str:
@@ -575,7 +575,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     logger.info(
         (
             "Summarize response ready | style=%s llm_version=%s "
-            "sentences=%s underlined=%s mean_uncertainty=%s accepted_at=%s completed_at=%s"
+            "sentences=%s underlined=%s avg_uncertainty=%s accepted_at=%s completed_at=%s"
         ),
         payload.style,
         llm_version,

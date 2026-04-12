@@ -398,8 +398,7 @@ export function App() {
             {draftChoices ? (
               <div className="draft-choice-container">
                 <p className="draft-choice-notice">
-                  Average uncertainty {Math.round(draftChoices.avgUncertainty * 100)}% — two drafts
-                  generated. Choose the one that reads better.
+                  Uncertainty in generation too high. Choose the one that reads better.
                 </p>
                 <div className="draft-choice-cards">
                   {draftChoices.drafts.map((draft, index) => (
@@ -408,7 +407,7 @@ export function App() {
                       <p className="draft-card-body">{draft.summary}</p>
                       <Button
                         className="draft-card-button"
-                        text="Use this"
+                        text="I like this"
                         onClick={() => handleChooseDraft(draft)}
                       />
                     </div>
