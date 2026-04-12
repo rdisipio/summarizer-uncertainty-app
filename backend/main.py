@@ -83,16 +83,12 @@ def _env_threshold_percent(name: str, default: float) -> float:
 UNCERTAINTY_BAND_LOW_MAX = _env_threshold_percent("UNCERTAINTY_BAND_LOW_MAX", 20.0) / 100.0
 UNCERTAINTY_BAND_HIGH_LOW = _env_threshold_percent("UNCERTAINTY_BAND_HIGH_LOW", 50.0) / 100.0
 
-# Per-level thresholds for dual-draft generation.
-# When mean sentence uncertainty exceeds the selected level's threshold, two candidates are shown.
-DUAL_SUMMARY_THRESHOLD_RELAXED = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD_RELAXED", 35.0) / 100.0
-DUAL_SUMMARY_THRESHOLD_NORMAL = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD_NORMAL", 25.0) / 100.0
-DUAL_SUMMARY_THRESHOLD_CONSERVATIVE = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD_CONSERVATIVE", 15.0) / 100.0
-
+# Per-level thresholds for dual-draft generation (internal, not configurable via env).
+# When mean sentence uncertainty exceeds the selected level's value, two candidates are shown.
 DUAL_SUMMARY_THRESHOLDS: dict[str, float] = {
-    "relaxed": DUAL_SUMMARY_THRESHOLD_RELAXED,
-    "normal": DUAL_SUMMARY_THRESHOLD_NORMAL,
-    "conservative": DUAL_SUMMARY_THRESHOLD_CONSERVATIVE,
+    "relaxed": 0.35,
+    "normal": 0.25,
+    "conservative": 0.15,
 }
 
 
@@ -115,15 +111,12 @@ SHOW_LOGO = _env_show_logo_flag(True)
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
 logger.info(
-    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s band_low_max=%s band_high_low=%s dual_threshold_relaxed=%s dual_threshold_normal=%s dual_threshold_conservative=%s frontend_dist_exists=%s api_key_configured=%s",
+    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s band_low_max=%s band_high_low=%s frontend_dist_exists=%s api_key_configured=%s",
     OPENROUTER_ENDPOINT,
     SHOW_UNCERTAINTY,
     SHOW_LOGO,
     UNCERTAINTY_BAND_LOW_MAX,
     UNCERTAINTY_BAND_HIGH_LOW,
-    DUAL_SUMMARY_THRESHOLD_RELAXED,
-    DUAL_SUMMARY_THRESHOLD_NORMAL,
-    DUAL_SUMMARY_THRESHOLD_CONSERVATIVE,
     FRONTEND_DIST_DIR.exists(),
     bool(OPENROUTER_API_KEY),
 )
@@ -216,9 +209,6 @@ class AppConfigResponse(BaseModel):
     show_logo: bool
     uncertainty_band_low_max: float
     uncertainty_band_high_low: float
-    dual_summary_threshold_relaxed: float
-    dual_summary_threshold_normal: float
-    dual_summary_threshold_conservative: float
 
 
 def _utc_iso_now() -> str:
@@ -471,9 +461,6 @@ def app_config() -> AppConfigResponse:
         show_logo=SHOW_LOGO,
         uncertainty_band_low_max=UNCERTAINTY_BAND_LOW_MAX,
         uncertainty_band_high_low=UNCERTAINTY_BAND_HIGH_LOW,
-        dual_summary_threshold_relaxed=DUAL_SUMMARY_THRESHOLD_RELAXED,
-        dual_summary_threshold_normal=DUAL_SUMMARY_THRESHOLD_NORMAL,
-        dual_summary_threshold_conservative=DUAL_SUMMARY_THRESHOLD_CONSERVATIVE,
     )
 
 
