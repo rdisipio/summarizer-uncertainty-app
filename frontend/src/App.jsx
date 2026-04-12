@@ -52,6 +52,7 @@ export function App() {
   const [showUncertainty, setShowUncertainty] = useState(true);
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
+  const [draftChoices, setDraftChoices] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmittingChanges, setIsSubmittingChanges] = useState(false);
   const [storePersonalData, setStorePersonalData] = useState(false);
@@ -133,11 +134,18 @@ export function App() {
       }
 
       const data = await response.json();
-      setGeneratedSummary(data.summary || "");
       setShowUncertainty(data.show_uncertainty !== false);
-      setSentences(Array.isArray(data.sentences) ? data.sentences : []);
-
       setEditorialCards([]);
+
+      if (data.requires_choice && Array.isArray(data.drafts) && data.drafts.length === 2) {
+        setDraftChoices({ drafts: data.drafts, avgUncertainty: data.avg_uncertainty ?? 0 });
+        setGeneratedSummary("");
+        setSentences([]);
+      } else {
+        setDraftChoices(null);
+        setGeneratedSummary(data.summary || "");
+        setSentences(Array.isArray(data.sentences) ? data.sentences : []);
+      }
     } catch (error) {
       setGeneratedSummary("");
       setSentences([]);
@@ -151,6 +159,12 @@ export function App() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleChooseDraft = (draft) => {
+    setGeneratedSummary(draft.summary);
+    setSentences(Array.isArray(draft.sentences) ? draft.sentences : []);
+    setDraftChoices(null);
   };
 
   const handleSentenceClick = (sentence) => {
@@ -278,6 +292,7 @@ export function App() {
     setSelectedStyle("");
     setGeneratedSummary("");
     setSentences([]);
+    setDraftChoices(null);
     setEditorialCards([]);
     setStorePersonalData(false);
     setSubmitMessage("");
@@ -379,52 +394,75 @@ export function App() {
               <p className="section-title">AI Generated Draft</p>
               <span className="staged-chip">{stagedEditsCount} staged</span>
             </div>
-            {generatedSummary ? (
-              <p className="summary-text">
-                {sentences.length > 0
-                  ? sentences.map((item, index) => (
-                      <button
-                        key={`${index}-${item.sentence}`}
-                        type="button"
-                        className="sentence-button"
-                        onClick={() => handleSentenceClick(item.sentence)}
-                      >
-                        <Tooltip
-                          content={getTooltipText(item, showUncertainty)}
-                          hoverOpenDelay={80}
+
+            {draftChoices ? (
+              <div className="draft-choice-container">
+                <p className="draft-choice-notice">
+                  Average uncertainty {Math.round(draftChoices.avgUncertainty * 100)}% — two drafts
+                  generated. Choose the one that reads better.
+                </p>
+                <div className="draft-choice-cards">
+                  {draftChoices.drafts.map((draft, index) => (
+                    <div key={index} className="draft-card">
+                      <p className="draft-card-label">Draft {index === 0 ? "A" : "B"}</p>
+                      <p className="draft-card-body">{draft.summary}</p>
+                      <Button
+                        className="draft-card-button"
+                        text="Use this"
+                        onClick={() => handleChooseDraft(draft)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : generatedSummary ? (
+              <>
+                <p className="summary-text">
+                  {sentences.length > 0
+                    ? sentences.map((item, index) => (
+                        <button
+                          key={`${index}-${item.sentence}`}
+                          type="button"
+                          className="sentence-button"
+                          onClick={() => handleSentenceClick(item.sentence)}
                         >
-                          <span
-                            className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}
+                          <Tooltip
+                            content={getTooltipText(item, showUncertainty)}
+                            hoverOpenDelay={80}
                           >
-                            {item.sentence}
-                          </span>
-                        </Tooltip>{" "}
-                      </button>
-                    ))
-                  : generatedSummary}
-              </p>
+                            <span
+                              className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}
+                            >
+                              {item.sentence}
+                            </span>
+                          </Tooltip>{" "}
+                        </button>
+                      ))
+                    : generatedSummary}
+                </p>
+                {hasStagedEdits ? (
+                  <div className="output-block">
+                    <p className="section-title">Edited Preview</p>
+                    <p className="paragraph-preview">
+                      {previewSentences.length > 0
+                        ? previewSentences.map((item, index) => (
+                            <span
+                              key={`${index}-${item.text}`}
+                              className={item.isEdited ? "edited-sentence-bold" : ""}
+                            >
+                              {item.text}{" "}
+                            </span>
+                          ))
+                        : previewParagraph}
+                    </p>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <p className="placeholder-text">
                 Generate a rewrite to see sentence-level uncertainty and begin editing.
               </p>
             )}
-            {hasStagedEdits ? (
-              <div className="output-block">
-                <p className="section-title">Edited Preview</p>
-                <p className="paragraph-preview">
-                  {previewSentences.length > 0
-                    ? previewSentences.map((item, index) => (
-                        <span
-                          key={`${index}-${item.text}`}
-                          className={item.isEdited ? "edited-sentence-bold" : ""}
-                        >
-                          {item.text}{" "}
-                        </span>
-                      ))
-                    : previewParagraph}
-                </p>
-              </div>
-            ) : null}
           </Card>
         </section>
 
@@ -489,7 +527,7 @@ export function App() {
           </section>
         ) : null}
 
-        {generatedSummary ? (
+        {generatedSummary && !draftChoices ? (
           <div className="submit-controls">
             <label className="privacy-checkbox">
               <input

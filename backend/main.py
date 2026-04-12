@@ -82,6 +82,9 @@ def _env_threshold_percent(name: str, default: float) -> float:
 UNCERTAINTY_BAND_LOW_MAX = _env_threshold_percent("UNCERTAINTY_BAND_LOW_MAX", 20.0) / 100.0
 UNCERTAINTY_BAND_HIGH_LOW = _env_threshold_percent("UNCERTAINTY_BAND_HIGH_LOW", 50.0) / 100.0
 
+# When mean sentence uncertainty exceeds this threshold, two draft candidates are generated.
+DUAL_SUMMARY_THRESHOLD = _env_threshold_percent("DUAL_SUMMARY_THRESHOLD", 35.0) / 100.0
+
 
 def _uncertainty_band(score: float) -> str:
     """Map a 0–1 uncertainty score to a display band."""
@@ -102,12 +105,13 @@ SHOW_LOGO = _env_show_logo_flag(True)
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
 logger.info(
-    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s band_low_max=%s band_high_low=%s frontend_dist_exists=%s api_key_configured=%s",
+    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s band_low_max=%s band_high_low=%s dual_summary_threshold=%s frontend_dist_exists=%s api_key_configured=%s",
     OPENROUTER_ENDPOINT,
     SHOW_UNCERTAINTY,
     SHOW_LOGO,
     UNCERTAINTY_BAND_LOW_MAX,
     UNCERTAINTY_BAND_HIGH_LOW,
+    DUAL_SUMMARY_THRESHOLD,
     FRONTEND_DIST_DIR.exists(),
     bool(OPENROUTER_API_KEY),
 )
@@ -140,14 +144,25 @@ class SentenceUncertainty(BaseModel):
     should_underline: bool
 
 
+class DraftCandidate(BaseModel):
+    """One candidate summary with its sentence-level uncertainty annotations."""
+
+    summary: str
+    sentences: list[SentenceUncertainty]
+    avg_uncertainty: float
+
+
 class SummarizeResponse(BaseModel):
     """Output payload for text summarization."""
 
     metadata: RequestMetadata
     style: str
     show_uncertainty: bool
+    requires_choice: bool = False
+    avg_uncertainty: float = 0.0
     summary: str
     sentences: list[SentenceUncertainty]
+    drafts: list[DraftCandidate] | None = None
     band_low_max: float
     band_high_low: float
 
@@ -188,6 +203,7 @@ class AppConfigResponse(BaseModel):
     show_logo: bool
     uncertainty_band_low_max: float
     uncertainty_band_high_low: float
+    dual_summary_threshold: float
 
 
 def _utc_iso_now() -> str:
@@ -382,6 +398,39 @@ def _score_sentences_with_hf_api(
     return scored, band_low_max, band_high_low
 
 
+def _get_scored_sentences(
+    source_text: str,
+    summary_text: str,
+) -> tuple[list[SentenceUncertainty], float, float]:
+    """Score summary sentences, falling back to random scores if the HF API is unavailable.
+
+    Returns (sentences, band_low_max, band_high_low).
+    """
+    hf_result = _score_sentences_with_hf_api(source_text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT)
+    if hf_result is not None:
+        return hf_result
+
+    logger.warning("HF uncertainty API unavailable or returned no results — falling back to random scores.")
+    summary_sentences = _split_sentences(summary_text)
+    sentence_payloads: list[SentenceUncertainty] = []
+    for sentence in summary_sentences:
+        ambiguity = round(_random.random(), 4)
+        risk = round(_random.random(), 4)
+        uncertainty = round((ambiguity + risk) / 2, 4)
+        band = _uncertainty_band(uncertainty)
+        sentence_payloads.append(
+            SentenceUncertainty(
+                sentence=sentence,
+                ambiguity=ambiguity,
+                risk=risk,
+                uncertainty=uncertainty,
+                uncertainty_band=band,
+                should_underline=band != "low",
+            )
+        )
+    return sentence_payloads, UNCERTAINTY_BAND_LOW_MAX, UNCERTAINTY_BAND_HIGH_LOW
+
+
 backend = FastAPI(title="Summarizer Uncertainty API", version="0.1.0")
 
 backend.add_middleware(
@@ -407,12 +456,43 @@ def app_config() -> AppConfigResponse:
         show_logo=SHOW_LOGO,
         uncertainty_band_low_max=UNCERTAINTY_BAND_LOW_MAX,
         uncertainty_band_high_low=UNCERTAINTY_BAND_HIGH_LOW,
+        dual_summary_threshold=DUAL_SUMMARY_THRESHOLD,
     )
+
+
+def _apply_show_uncertainty(
+    sentences: list[SentenceUncertainty],
+) -> list[SentenceUncertainty]:
+    """Strip underline flags when SHOW_UNCERTAINTY is disabled."""
+    if SHOW_UNCERTAINTY:
+        return sentences
+    return [
+        SentenceUncertainty(
+            sentence=item.sentence,
+            ambiguity=item.ambiguity,
+            risk=item.risk,
+            uncertainty=item.uncertainty,
+            uncertainty_band=item.uncertainty_band,
+            should_underline=False,
+        )
+        for item in sentences
+    ]
+
+
+def _mean_uncertainty(sentences: list[SentenceUncertainty]) -> float:
+    if not sentences:
+        return 0.0
+    return round(sum(item.uncertainty for item in sentences) / len(sentences), 4)
 
 
 @backend.post("/api/summarize", response_model=SummarizeResponse)
 def summarize(payload: SummarizeRequest) -> SummarizeResponse:
-    """Generate a rewritten paragraph and attach uncertainty annotations."""
+    """Generate a rewritten paragraph and attach uncertainty annotations.
+
+    When SHOW_UNCERTAINTY is enabled and the mean sentence uncertainty of the
+    first draft exceeds DUAL_SUMMARY_THRESHOLD, a second draft is generated and
+    both are returned as candidates for the user to choose between.
+    """
     logger.info(
         "Summarize request received | style=%s llm_model=%s text=%r",
         payload.style,
@@ -422,42 +502,28 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     accepted_at = _utc_iso_now()
 
     try:
-        summary_text, llm_version = _generate_summary_with_openrouter(payload)
+        summary_a, llm_version = _generate_summary_with_openrouter(payload)
     except HTTPException:
-        logger.exception(
-            "Summarize failed | style=%s llm_model=%s",
-            payload.style,
-            payload.llm_model,
-        )
+        logger.exception("Summarize failed | style=%s llm_model=%s", payload.style, payload.llm_model)
         raise
-    hf_result = _score_sentences_with_hf_api(
-        payload.text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT
-    )
-    if hf_result is None:
-        logger.warning(
-            "HF uncertainty API unavailable or returned no results — falling back to random scores."
-        )
-        summary_sentences = _split_sentences(summary_text)
-        sentence_payloads = []
-        for sentence in summary_sentences:
-            ambiguity = round(_random.random(), 4)
-            risk = round(_random.random(), 4)
-            uncertainty = round((ambiguity + risk) / 2, 4)
-            band = _uncertainty_band(uncertainty)
-            sentence_payloads.append(
-                SentenceUncertainty(
-                    sentence=sentence,
-                    ambiguity=ambiguity,
-                    risk=risk,
-                    uncertainty=uncertainty,
-                    uncertainty_band=band,
-                    should_underline=band != "low",
-                )
-            )
-        response_band_low_max = UNCERTAINTY_BAND_LOW_MAX
-        response_band_high_low = UNCERTAINTY_BAND_HIGH_LOW
-    else:
-        sentence_payloads, response_band_low_max, response_band_high_low = hf_result
+
+    sentences_a, band_low_max, band_high_low = _get_scored_sentences(payload.text, summary_a)
+    avg_a = _mean_uncertainty(sentences_a)
+
+    requires_choice = SHOW_UNCERTAINTY and avg_a > DUAL_SUMMARY_THRESHOLD
+
+    if requires_choice:
+        try:
+            summary_b, _ = _generate_summary_with_openrouter(payload)
+        except HTTPException:
+            logger.warning("Second draft generation failed — falling back to single draft.")
+            requires_choice = False
+            summary_b = ""
+            sentences_b: list[SentenceUncertainty] = []
+            avg_b = 0.0
+        else:
+            sentences_b, _, _ = _get_scored_sentences(payload.text, summary_b)
+            avg_b = _mean_uncertainty(sentences_b)
 
     completed_at = _utc_iso_now()
     metadata = RequestMetadata(
@@ -466,45 +532,70 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         llm_version=llm_version,
     )
 
-    response = SummarizeResponse(
-        metadata=metadata,
-        style=payload.style,
-        show_uncertainty=SHOW_UNCERTAINTY,
-        summary=summary_text,
-        band_low_max=response_band_low_max,
-        band_high_low=response_band_high_low,
-        sentences=[
-            SentenceUncertainty(
-                sentence=item.sentence,
-                ambiguity=item.ambiguity,
-                risk=item.risk,
-                uncertainty=item.uncertainty,
-                uncertainty_band=item.uncertainty_band,
-                should_underline=item.should_underline if SHOW_UNCERTAINTY else False,
-            )
-            for item in sentence_payloads
-        ],
-    )
+    if requires_choice:
+        draft_a = DraftCandidate(
+            summary=summary_a,
+            sentences=_apply_show_uncertainty(sentences_a),
+            avg_uncertainty=avg_a,
+        )
+        draft_b = DraftCandidate(
+            summary=summary_b,
+            sentences=_apply_show_uncertainty(sentences_b),
+            avg_uncertainty=avg_b,
+        )
+        logger.info(
+            (
+                "Dual-draft response | style=%s llm_version=%s "
+                "avg_uncertainty_a=%s avg_uncertainty_b=%s threshold=%s "
+                "accepted_at=%s completed_at=%s"
+            ),
+            payload.style,
+            llm_version,
+            avg_a,
+            avg_b,
+            DUAL_SUMMARY_THRESHOLD,
+            accepted_at,
+            completed_at,
+        )
+        return SummarizeResponse(
+            metadata=metadata,
+            style=payload.style,
+            show_uncertainty=SHOW_UNCERTAINTY,
+            requires_choice=True,
+            avg_uncertainty=avg_a,
+            summary="",
+            sentences=[],
+            drafts=[draft_a, draft_b],
+            band_low_max=band_low_max,
+            band_high_low=band_high_low,
+        )
 
-    underlined_count = sum(1 for item in sentence_payloads if item.should_underline)
-    mean_uncertainty = round(
-        sum(item.uncertainty for item in sentence_payloads) / len(sentence_payloads), 4
-    )
+    final_sentences = _apply_show_uncertainty(sentences_a)
+    underlined_count = sum(1 for item in final_sentences if item.should_underline)
     logger.info(
         (
             "Summarize response ready | style=%s llm_version=%s "
             "sentences=%s underlined=%s mean_uncertainty=%s accepted_at=%s completed_at=%s"
         ),
-        response.style,
-        response.metadata.llm_version,
-        len(response.sentences),
+        payload.style,
+        llm_version,
+        len(final_sentences),
         underlined_count,
-        mean_uncertainty,
-        response.metadata.request_accepted_at,
-        response.metadata.request_completed_at,
+        avg_a,
+        accepted_at,
+        completed_at,
     )
-
-    return response
+    return SummarizeResponse(
+        metadata=metadata,
+        style=payload.style,
+        show_uncertainty=SHOW_UNCERTAINTY,
+        requires_choice=False,
+        avg_uncertainty=avg_a,
+        summary=summary_a,
+        sentences=final_sentences,
+        band_low_max=band_low_max,
+        band_high_low=band_high_low,
+    )
 
 
 @backend.post("/api/editorial-changes", response_model=EditorialChangesResponse)

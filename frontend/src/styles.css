@@ -379,6 +379,66 @@ body {
   margin: 0 0 8px 0;
 }
 
+.draft-choice-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.draft-choice-notice {
+  background: #fef8ec;
+  border: 1px solid #e8d8a0;
+  border-radius: 8px;
+  color: #6b4f00;
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0;
+  padding: 10px 14px;
+}
+
+.draft-choice-cards {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.draft-card {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.draft-card-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.draft-card-body {
+  flex: 1;
+  font-family: "Literata", serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.draft-card-button {
+  align-self: flex-start;
+}
+
+@media (max-width: 600px) {
+  .draft-choice-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 960px) {
   .masthead {
     flex-direction: column;
