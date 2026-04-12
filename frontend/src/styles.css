@@ -122,6 +122,13 @@ body {
   padding: 10px 12px;
 }
 
+.submit-success-row {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
 .workspace-grid {
   display: grid;
   gap: 14px;
@@ -399,13 +406,6 @@ body {
   gap: 8px;
 }
 
-.restart-row {
-  margin-top: 10px;
-}
-
-.restart-hint {
-  margin: 0 0 8px 0;
-}
 
 .draft-choice-container {
   display: flex;

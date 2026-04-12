@@ -345,12 +345,10 @@ export function App() {
 
         {errorMessage ? <p className="notice error-text">{errorMessage}</p> : null}
         {submitMessage ? (
-          <>
-            <p className="notice success-text">{submitMessage}</p>
-            <p className="restart-hint muted">
-              Ready for another article? Start a new paragraph to begin a fresh review cycle.
-            </p>
-          </>
+          <div className="notice success-text submit-success-row">
+            <span>{submitMessage}</span>
+            <Button text="Start New Paragraph" onClick={handleRestartWorkflow} />
+          </div>
         ) : null}
 
         <section className="workspace-grid">
@@ -573,11 +571,6 @@ export function App() {
           </div>
         ) : null}
 
-        {submitMessage ? (
-          <div className="restart-row">
-            <Button intent="none" text="Start New Paragraph" onClick={handleRestartWorkflow} />
-          </div>
-        ) : null}
       </div>
     </main>
   );
