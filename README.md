@@ -19,7 +19,8 @@ A web application for uncertainty-aware editorial rewriting.
   - `informal`
 - Lets the user select an LLM model from a dropdown before generation.
 - Annotates the LLM-edited text with sentence-level uncertainty (ambiguity and risk).
-- Highlights high-uncertainty sentences (initial UX: red wavy underline).
+- Highlights high-uncertainty sentences (wavy underline: blue for mid, red for high).
+- When the average sentence uncertainty of the generated draft exceeds a configurable threshold, two alternative drafts are generated and presented side by side. The user chooses the one that reads better before proceeding.
 - Lets users apply and classify sentence-level corrections before submitting.
 
 ## Why It Exists
@@ -70,8 +71,16 @@ cp .env.example .env
 pipenv run uvicorn backend.main:backend --reload
 ```
 
-Required backend env var:
-- `OPENROUTER_API_KEY` (stored in `.env`)
+Backend env vars (stored in `.env`):
+
+| Variable | Default | Description |
+|---|---|---|
+| `OPENROUTER_API_KEY` | — | Required. API key for OpenRouter. |
+| `SHOW_UNCERTAINTY` | `true` | Show sentence-level uncertainty annotations. |
+| `SHOW_LOGO` | `false` | Show the Human Feedback Foundation badge. |
+| `UNCERTAINTY_BAND_LOW_MAX` | `20` | Upper bound (%) of the low uncertainty band. |
+| `UNCERTAINTY_BAND_HIGH_LOW` | `50` | Lower bound (%) of the high uncertainty band. |
+| `DUAL_SUMMARY_THRESHOLD` | `30` | Average uncertainty (%) above which two draft candidates are generated for the user to choose between. |
 
 ### Frontend Setup (React + Blueprint)
 ```bash
