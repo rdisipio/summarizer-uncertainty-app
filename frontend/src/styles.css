@@ -140,6 +140,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--shadow);
+  overflow: visible;
 }
 
 .section-title {
@@ -154,7 +155,6 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  justify-content: center;
   margin-top: 14px;
 }
 
