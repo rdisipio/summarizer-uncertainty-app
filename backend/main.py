@@ -457,6 +457,10 @@ def _get_scored_sentences(
     return sentence_payloads, UNCERTAINTY_BAND_LOW_MAX, UNCERTAINTY_BAND_HIGH_LOW
 
 
+# In-memory cache for /api/score results.
+# Keyed by (source, text) so identical inputs always return identical scores.
+_score_cache: dict[tuple[str, str], ScoreResponse] = {}
+
 backend = FastAPI(title="Summarizer Uncertainty API", version="0.1.0")
 
 backend.add_middleware(
@@ -514,14 +518,22 @@ def _mean_uncertainty(sentences: list[SentenceUncertainty]) -> float:
 def score(payload: ScoreRequest) -> ScoreResponse:
     """Score an edited paragraph against its source without calling the LLM.
 
-    Uses a fixed seed for deterministic results across repeated pre-checks.
+    Results are cached by (source, text) so repeated pre-checks on identical
+    content always return identical scores.
     """
+    cache_key = (payload.source, payload.text)
+    if cache_key in _score_cache:
+        logger.info("Score cache hit | text_length=%s", len(payload.text))
+        return _score_cache[cache_key]
+
     logger.info("Score request received | text_length=%s", len(payload.text))
     sentences, _, _ = _get_scored_sentences(payload.source, payload.text, seed=0)
     sentences = _apply_show_uncertainty(sentences)
     avg = _mean_uncertainty(sentences)
     logger.info("Score response ready | sentences=%s avg_uncertainty=%s", len(sentences), avg)
-    return ScoreResponse(sentences=sentences, avg_uncertainty=avg)
+    result = ScoreResponse(sentences=sentences, avg_uncertainty=avg)
+    _score_cache[cache_key] = result
+    return result
 
 
 @backend.post("/api/summarize", response_model=SummarizeResponse)
