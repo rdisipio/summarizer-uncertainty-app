@@ -524,22 +524,15 @@ export function App() {
                     <p className="paragraph-preview">
                       {rescoredSentences
                         ? rescoredSentences.map((item, index) => (
-                            <button
+                            <Tooltip
                               key={`${index}-${item.sentence}`}
-                              type="button"
-                              className="sentence-button"
-                              disabled={!!submitMessage}
-                              onClick={() => handleSentenceClick(item.sentence)}
+                              content={getTooltipText(item, showUncertainty)}
+                              hoverOpenDelay={80}
                             >
-                              <Tooltip
-                                content={getTooltipText(item, showUncertainty)}
-                                hoverOpenDelay={80}
-                              >
-                                <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}>
-                                  {item.sentence}
-                                </span>
-                              </Tooltip>{" "}
-                            </button>
+                              <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}>
+                                {item.sentence}
+                              </span>
+                            </Tooltip>
                           ))
                         : previewSentences.length > 0
                           ? previewSentences.map((item, index) => (
