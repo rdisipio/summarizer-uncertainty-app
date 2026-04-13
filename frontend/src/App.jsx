@@ -60,6 +60,7 @@ export function App() {
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
   const [draftChoices, setDraftChoices] = useState(null);
+  const [rescoredSentences, setRescoredSentences] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRescoring, setIsRescoring] = useState(false);
   const [isSubmittingChanges, setIsSubmittingChanges] = useState(false);
@@ -146,6 +147,8 @@ export function App() {
       const data = await response.json();
       setShowUncertainty(data.show_uncertainty !== false);
       setEditorialCards([]);
+      setRescoredSentences(null);
+      setSubmitPhase(null);
 
       if (data.requires_choice && Array.isArray(data.drafts) && data.drafts.length === 2) {
         setDraftChoices({ drafts: data.drafts, avgUncertainty: data.avg_uncertainty ?? 0 });
@@ -226,6 +229,7 @@ export function App() {
       return;
     }
     setErrorMessage("");
+    setRescoredSentences(null);
     setEditorialCards((previousCards) =>
       previousCards.map((card) =>
         card.id === cardId ? { ...card, isAccepted: true } : card
@@ -252,8 +256,7 @@ export function App() {
         throw new Error(await extractApiError(response));
       }
       const data = await response.json();
-      setSentences(Array.isArray(data.sentences) ? data.sentences : []);
-      setGeneratedSummary(textToScore);
+      setRescoredSentences(Array.isArray(data.sentences) ? data.sentences : null);
     } catch (error) {
       setErrorMessage(
         error instanceof TypeError
@@ -332,6 +335,7 @@ export function App() {
     setGeneratedSummary("");
     setSentences([]);
     setDraftChoices(null);
+    setRescoredSentences(null);
     setEditorialCards([]);
     setSubmitPhase(null);
     setStorePersonalData(false);
@@ -455,14 +459,12 @@ export function App() {
 
           <Card className="panel result-panel" elevation={1}>
             <div className="result-header">
-              <p className="section-title">
-                {submitPhase === "reviewing" ? "Edited Version" : "AI Generated Draft"}
-              </p>
+              <p className="section-title">AI Generated Draft</p>
               <div className="result-header-actions">
                 {hasStagedEdits && !submitPhase && !draftChoices ? (
                   <Button
                     size="small"
-                    text="Re-check"
+                    text="Pre-check"
                     loading={isRescoring}
                     onClick={() => handleRecheck(previewParagraph)}
                   />
@@ -520,16 +522,35 @@ export function App() {
                   <div className="output-block">
                     <p className="section-title">Edited Preview</p>
                     <p className="paragraph-preview">
-                      {previewSentences.length > 0
-                        ? previewSentences.map((item, index) => (
-                            <span
-                              key={`${index}-${item.text}`}
-                              className={item.isEdited ? "edited-sentence-bold" : ""}
+                      {rescoredSentences
+                        ? rescoredSentences.map((item, index) => (
+                            <button
+                              key={`${index}-${item.sentence}`}
+                              type="button"
+                              className="sentence-button"
+                              disabled={!!submitMessage}
+                              onClick={() => handleSentenceClick(item.sentence)}
                             >
-                              {item.text}{" "}
-                            </span>
+                              <Tooltip
+                                content={getTooltipText(item, showUncertainty)}
+                                hoverOpenDelay={80}
+                              >
+                                <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}>
+                                  {item.sentence}
+                                </span>
+                              </Tooltip>{" "}
+                            </button>
                           ))
-                        : previewParagraph}
+                        : previewSentences.length > 0
+                          ? previewSentences.map((item, index) => (
+                              <span
+                                key={`${index}-${item.text}`}
+                                className={item.isEdited ? "edited-sentence-bold" : ""}
+                              >
+                                {item.text}{" "}
+                              </span>
+                            ))
+                          : previewParagraph}
                     </p>
                   </div>
                 ) : null}
