@@ -129,6 +129,8 @@ class SummarizeRequest(BaseModel):
     style: RewriteStyle
     llm_model: str = Field(default=DEFAULT_LLM_VERSION, min_length=1)
     threshold_level: ThresholdLevel = "normal"
+    band_low_max: float = Field(default=0.20, ge=0.0, le=1.0)
+    band_high_low: float = Field(default=0.50, ge=0.0, le=1.0)
 
 
 class RequestMetadata(BaseModel):
