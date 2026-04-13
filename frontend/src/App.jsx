@@ -319,9 +319,17 @@ export function App() {
 
       const data = await response.json();
       const avgUncertainty = sentences.length > 0
-        ? Math.round(sentences.reduce((sum, s) => sum + s.uncertainty, 0) / sentences.length * 100)
+        ? sentences.reduce((sum, s) => sum + s.uncertainty, 0) / sentences.length
         : null;
-      const uncertaintyNote = avgUncertainty !== null ? ` Average uncertainty: ${avgUncertainty}%.` : "";
+      const avgPct = avgUncertainty !== null ? Math.round(avgUncertainty * 100) : null;
+      const avgBand = avgUncertainty !== null
+        ? sentences.filter(s => s.uncertainty_band !== "low").length > sentences.length / 2
+          ? "high"
+          : sentences.some(s => s.uncertainty_band !== "low")
+            ? "mid"
+            : "low"
+        : null;
+      const uncertaintyNote = avgPct !== null ? ` Average uncertainty: ${avgBand} (${avgPct}%).` : "";
       setSubmitMessage(
         data.edits_received > 0
           ? `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).${uncertaintyNote}`
