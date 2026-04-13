@@ -54,8 +54,6 @@ export function App() {
   const [selectedStyle, setSelectedStyle] = useState("");
   const [selectedLlmModel, setSelectedLlmModel] = useState(LLM_MODEL_OPTIONS[0]);
   const [selectedThresholdLevel, setSelectedThresholdLevel] = useState("normal");
-  const [bandLowMax, setBandLowMax] = useState(0.20);
-  const [bandHighLow, setBandHighLow] = useState(0.50);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [showUncertainty, setShowUncertainty] = useState(true);
@@ -136,8 +134,6 @@ export function App() {
           style,
           llm_model: selectedLlmModel,
           threshold_level: selectedThresholdLevel,
-          band_low_max: bandLowMax,
-          band_high_low: bandHighLow,
         })
       });
 

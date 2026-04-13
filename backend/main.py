@@ -83,6 +83,11 @@ def _env_threshold_percent(name: str, default: float) -> float:
 UNCERTAINTY_BAND_LOW_MAX = _env_threshold_percent("UNCERTAINTY_BAND_LOW_MAX", 20.0) / 100.0
 UNCERTAINTY_BAND_HIGH_LOW = _env_threshold_percent("UNCERTAINTY_BAND_HIGH_LOW", 50.0) / 100.0
 
+# Display band thresholds applied to the HF API's uncertainty_score (0–100 scale).
+# Scores below LOW are "low", between LOW and HIGH are "mid", above HIGH are "high".
+SENTENCE_BAND_LOW = _env_threshold_percent("SENTENCE_BAND_LOW", 25.0)
+SENTENCE_BAND_HIGH = _env_threshold_percent("SENTENCE_BAND_HIGH", 75.0)
+
 # Per-level thresholds for dual-draft generation (internal, not configurable via env).
 # When mean sentence uncertainty exceeds the selected level's value, two candidates are shown.
 DUAL_SUMMARY_THRESHOLDS: dict[str, float] = {
@@ -111,12 +116,14 @@ SHOW_LOGO = _env_show_logo_flag(True)
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
 logger.info(
-    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s band_low_max=%s band_high_low=%s frontend_dist_exists=%s api_key_configured=%s",
+    "Config loaded | openrouter_endpoint=%s show_uncertainty=%s show_logo=%s band_low_max=%s band_high_low=%s sentence_band_low=%s sentence_band_high=%s frontend_dist_exists=%s api_key_configured=%s",
     OPENROUTER_ENDPOINT,
     SHOW_UNCERTAINTY,
     SHOW_LOGO,
     UNCERTAINTY_BAND_LOW_MAX,
     UNCERTAINTY_BAND_HIGH_LOW,
+    SENTENCE_BAND_LOW,
+    SENTENCE_BAND_HIGH,
     FRONTEND_DIST_DIR.exists(),
     bool(OPENROUTER_API_KEY),
 )
@@ -129,8 +136,6 @@ class SummarizeRequest(BaseModel):
     style: RewriteStyle
     llm_model: str = Field(default=DEFAULT_LLM_VERSION, min_length=1)
     threshold_level: ThresholdLevel = "normal"
-    band_low_max: float = Field(default=0.20, ge=0.0, le=1.0)
-    band_high_low: float = Field(default=0.50, ge=0.0, le=1.0)
 
 
 class RequestMetadata(BaseModel):
@@ -334,16 +339,12 @@ def _score_sentences_with_hf_api(
     source_text: str,
     summary_text: str,
     sample_count: int,
-    band_low_max: float = UNCERTAINTY_BAND_LOW_MAX,
-    band_high_low: float = UNCERTAINTY_BAND_HIGH_LOW,
 ) -> tuple[list[SentenceUncertainty], float, float] | None:
     """Call the HF Space sentence uncertainty API.
 
-    Returns (sentences, band_low_max, band_high_low) using the API's sentence
-    segmentation and normalization boundaries, or None if unavailable.
-    Boundaries are derived from normalization.boundaries as:
-      band_low_max  = boundaries[1]
-      band_high_low = boundaries[3]
+    Returns (sentences, band_low_max, band_high_low), or None if unavailable.
+    Band assignment uses SENTENCE_BAND_LOW / SENTENCE_BAND_HIGH applied directly
+    to the API's uncertainty_score (0–100); the API's own band field is ignored.
     """
     if not HF_UNCERTAINTY_API_URL:
         return None
@@ -354,8 +355,6 @@ def _score_sentences_with_hf_api(
         "summary": summary_text,
         "sample_count": sample_count,
         "seed": seed,
-        "band_low_max": band_low_max,
-        "band_high_low": band_high_low,
     }
 
     try:
@@ -382,20 +381,18 @@ def _score_sentences_with_hf_api(
     if not sentence_results:
         return None
 
-    boundaries = payload.get("normalization", {}).get("boundaries", [])
-    if len(boundaries) >= 4:
-        band_low_max = boundaries[1]
-        band_high_low = boundaries[3]
-    else:
-        band_low_max = UNCERTAINTY_BAND_LOW_MAX
-        band_high_low = UNCERTAINTY_BAND_HIGH_LOW
-
     scored: list[SentenceUncertainty] = []
     for item in sentence_results:
-        # uncertainty_score is the API's normalised display value (0–100).
-        # Divide by 100 so it sits in [0, 1] and aligns with our band thresholds.
-        score = round(item.get("uncertainty_score", 0.0) / 100.0, 4)
-        band = _uncertainty_band(score)
+        # uncertainty_score is the API's display value (0–100). We apply our own
+        # band thresholds directly and store it normalised to [0, 1] for consistency.
+        raw_score = item.get("uncertainty_score", 0.0)
+        if raw_score < SENTENCE_BAND_LOW:
+            band = "low"
+        elif raw_score < SENTENCE_BAND_HIGH:
+            band = "mid"
+        else:
+            band = "high"
+        score = round(raw_score / 100.0, 4)
         scored.append(
             SentenceUncertainty(
                 sentence=item.get("sentence_text", ""),
@@ -406,20 +403,18 @@ def _score_sentences_with_hf_api(
                 should_underline=band != "low",
             )
         )
-    return scored, band_low_max, band_high_low
+    return scored, UNCERTAINTY_BAND_LOW_MAX, UNCERTAINTY_BAND_HIGH_LOW
 
 
 def _get_scored_sentences(
     source_text: str,
     summary_text: str,
-    band_low_max: float = UNCERTAINTY_BAND_LOW_MAX,
-    band_high_low: float = UNCERTAINTY_BAND_HIGH_LOW,
 ) -> tuple[list[SentenceUncertainty], float, float]:
     """Score summary sentences, falling back to random scores if the HF API is unavailable.
 
     Returns (sentences, band_low_max, band_high_low).
     """
-    hf_result = _score_sentences_with_hf_api(source_text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT, band_low_max, band_high_low)
+    hf_result = _score_sentences_with_hf_api(source_text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT)
     if hf_result is not None:
         return hf_result
 
@@ -519,7 +514,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         logger.exception("Summarize failed | style=%s llm_model=%s", payload.style, payload.llm_model)
         raise
 
-    sentences_a, band_low_max, band_high_low = _get_scored_sentences(payload.text, summary_a, payload.band_low_max, payload.band_high_low)
+    sentences_a, band_low_max, band_high_low = _get_scored_sentences(payload.text, summary_a)
     avg_a = _mean_uncertainty(sentences_a)
 
     threshold = DUAL_SUMMARY_THRESHOLDS[payload.threshold_level]
@@ -535,7 +530,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             sentences_b: list[SentenceUncertainty] = []
             avg_b = 0.0
         else:
-            sentences_b, _, _ = _get_scored_sentences(payload.text, summary_b, payload.band_low_max, payload.band_high_low)
+            sentences_b, _, _ = _get_scored_sentences(payload.text, summary_b)
             avg_b = _mean_uncertainty(sentences_b)
 
     completed_at = _utc_iso_now()
