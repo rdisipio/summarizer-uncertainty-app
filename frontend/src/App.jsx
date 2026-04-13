@@ -318,10 +318,14 @@ export function App() {
       }
 
       const data = await response.json();
+      const avgUncertainty = sentences.length > 0
+        ? Math.round(sentences.reduce((sum, s) => sum + s.uncertainty, 0) / sentences.length * 100)
+        : null;
+      const uncertaintyNote = avgUncertainty !== null ? ` Average uncertainty: ${avgUncertainty}%.` : "";
       setSubmitMessage(
         data.edits_received > 0
-          ? `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).`
-          : `Summary accepted with no edits (personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).`
+          ? `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).${uncertaintyNote}`
+          : `Summary accepted with no edits (personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).${uncertaintyNote}`
       );
     } catch (error) {
       setErrorMessage(
