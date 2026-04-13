@@ -334,6 +334,8 @@ def _score_sentences_with_hf_api(
     source_text: str,
     summary_text: str,
     sample_count: int,
+    band_low_max: float = UNCERTAINTY_BAND_LOW_MAX,
+    band_high_low: float = UNCERTAINTY_BAND_HIGH_LOW,
 ) -> tuple[list[SentenceUncertainty], float, float] | None:
     """Call the HF Space sentence uncertainty API.
 
@@ -352,6 +354,8 @@ def _score_sentences_with_hf_api(
         "summary": summary_text,
         "sample_count": sample_count,
         "seed": seed,
+        "band_low_max": band_low_max,
+        "band_high_low": band_high_low,
     }
 
     try:
@@ -408,12 +412,14 @@ def _score_sentences_with_hf_api(
 def _get_scored_sentences(
     source_text: str,
     summary_text: str,
+    band_low_max: float = UNCERTAINTY_BAND_LOW_MAX,
+    band_high_low: float = UNCERTAINTY_BAND_HIGH_LOW,
 ) -> tuple[list[SentenceUncertainty], float, float]:
     """Score summary sentences, falling back to random scores if the HF API is unavailable.
 
     Returns (sentences, band_low_max, band_high_low).
     """
-    hf_result = _score_sentences_with_hf_api(source_text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT)
+    hf_result = _score_sentences_with_hf_api(source_text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT, band_low_max, band_high_low)
     if hf_result is not None:
         return hf_result
 
@@ -513,7 +519,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         logger.exception("Summarize failed | style=%s llm_model=%s", payload.style, payload.llm_model)
         raise
 
-    sentences_a, band_low_max, band_high_low = _get_scored_sentences(payload.text, summary_a)
+    sentences_a, band_low_max, band_high_low = _get_scored_sentences(payload.text, summary_a, payload.band_low_max, payload.band_high_low)
     avg_a = _mean_uncertainty(sentences_a)
 
     threshold = DUAL_SUMMARY_THRESHOLDS[payload.threshold_level]
@@ -529,7 +535,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             sentences_b: list[SentenceUncertainty] = []
             avg_b = 0.0
         else:
-            sentences_b, _, _ = _get_scored_sentences(payload.text, summary_b)
+            sentences_b, _, _ = _get_scored_sentences(payload.text, summary_b, payload.band_low_max, payload.band_high_low)
             avg_b = _mean_uncertainty(sentences_b)
 
     completed_at = _utc_iso_now()
