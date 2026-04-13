@@ -552,7 +552,7 @@ export function App() {
           </section>
         ) : null}
 
-        {generatedSummary && !draftChoices ? (
+        {generatedSummary && !draftChoices && !submitMessage ? (
           <div className="submit-controls">
             <label className="privacy-checkbox">
               <input
