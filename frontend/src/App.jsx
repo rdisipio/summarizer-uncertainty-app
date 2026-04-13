@@ -403,6 +403,7 @@ export function App() {
                     id="llm-model-input"
                     options={LLM_MODEL_OPTIONS}
                     value={selectedLlmModel}
+                    disabled={!!submitMessage}
                     onChange={(event) => setSelectedLlmModel(event.target.value)}
                   />
                 </label>
@@ -412,6 +413,7 @@ export function App() {
                     id="threshold-level-input"
                     options={THRESHOLD_LEVEL_OPTIONS}
                     value={selectedThresholdLevel}
+                    disabled={!!submitMessage}
                     onChange={(event) => setSelectedThresholdLevel(event.target.value)}
                   />
                 </label>
