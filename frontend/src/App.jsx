@@ -256,7 +256,20 @@ export function App() {
         throw new Error(await extractApiError(response));
       }
       const data = await response.json();
-      setRescoredSentences(Array.isArray(data.sentences) ? data.sentences : null);
+      if (Array.isArray(data.sentences)) {
+        // For sentences that were not edited, reuse the original score so that
+        // context-driven variance in the HF API doesn't produce misleading diffs.
+        const originalByText = Object.fromEntries(sentences.map((s) => [s.sentence, s]));
+        const editedTexts = new Set(Object.values(acceptedEditsBySentence));
+        const merged = data.sentences.map((s) => {
+          const isEdited = editedTexts.has(s.sentence);
+          const original = originalByText[s.sentence];
+          return isEdited || !original ? s : original;
+        });
+        setRescoredSentences(merged);
+      } else {
+        setRescoredSentences(null);
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof TypeError
