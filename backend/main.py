@@ -180,6 +180,20 @@ class SummarizeResponse(BaseModel):
     band_high_low: float
 
 
+class ScoreRequest(BaseModel):
+    """Input payload for standalone sentence scoring."""
+
+    source: str = Field(min_length=1)
+    text: str = Field(min_length=1)
+
+
+class ScoreResponse(BaseModel):
+    """Output payload for standalone sentence scoring."""
+
+    sentences: list[SentenceUncertainty]
+    avg_uncertainty: float
+
+
 class EditorialChange(BaseModel):
     """One user-proposed editorial change."""
 
@@ -490,6 +504,17 @@ def _mean_uncertainty(sentences: list[SentenceUncertainty]) -> float:
     if not sentences:
         return 0.0
     return round(sum(item.uncertainty for item in sentences) / len(sentences), 4)
+
+
+@backend.post("/api/score", response_model=ScoreResponse)
+def score(payload: ScoreRequest) -> ScoreResponse:
+    """Score an edited paragraph against its source without calling the LLM."""
+    logger.info("Score request received | text_length=%s", len(payload.text))
+    sentences, _, _ = _get_scored_sentences(payload.source, payload.text)
+    sentences = _apply_show_uncertainty(sentences)
+    avg = _mean_uncertainty(sentences)
+    logger.info("Score response ready | sentences=%s avg_uncertainty=%s", len(sentences), avg)
+    return ScoreResponse(sentences=sentences, avg_uncertainty=avg)
 
 
 @backend.post("/api/summarize", response_model=SummarizeResponse)

@@ -61,7 +61,9 @@ export function App() {
   const [editorialCards, setEditorialCards] = useState([]);
   const [draftChoices, setDraftChoices] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRescoring, setIsRescoring] = useState(false);
   const [isSubmittingChanges, setIsSubmittingChanges] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState(null); // null | "reviewing" | "done"
   const [storePersonalData, setStorePersonalData] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -237,12 +239,40 @@ export function App() {
     );
   };
 
-  const handleSubmitChanges = async () => {
-    if (!generatedSummary) {
-      setErrorMessage("Generate a summary before submitting.");
-      return;
+  const handleRecheck = async (textToScore) => {
+    setIsRescoring(true);
+    setErrorMessage("");
+    try {
+      const response = await fetch(buildApiUrl("/api/score"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: sourceText, text: textToScore }),
+      });
+      if (!response.ok) {
+        throw new Error(await extractApiError(response));
+      }
+      const data = await response.json();
+      setSentences(Array.isArray(data.sentences) ? data.sentences : []);
+      setGeneratedSummary(textToScore);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof TypeError
+          ? "Network error: could not reach backend service."
+          : error instanceof Error ? error.message : "Unknown error."
+      );
+    } finally {
+      setIsRescoring(false);
     }
+  };
 
+  const handleRequestReview = async () => {
+    if (!generatedSummary) return;
+    const textToScore = previewParagraph || generatedSummary;
+    await handleRecheck(textToScore);
+    setSubmitPhase("reviewing");
+  };
+
+  const handleConfirmSubmit = async () => {
     setIsSubmittingChanges(true);
     setErrorMessage("");
     setSubmitMessage("");
@@ -277,6 +307,7 @@ export function App() {
       }
 
       const data = await response.json();
+      setSubmitPhase("done");
       setSubmitMessage(
         data.edits_received > 0
           ? `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).`
@@ -302,6 +333,7 @@ export function App() {
     setSentences([]);
     setDraftChoices(null);
     setEditorialCards([]);
+    setSubmitPhase(null);
     setStorePersonalData(false);
     setSubmitMessage("");
     setErrorMessage("");
@@ -423,8 +455,20 @@ export function App() {
 
           <Card className="panel result-panel" elevation={1}>
             <div className="result-header">
-              <p className="section-title">AI Generated Draft</p>
-              <span className="staged-chip">{stagedEditsCount} staged</span>
+              <p className="section-title">
+                {submitPhase === "reviewing" ? "Edited Version" : "AI Generated Draft"}
+              </p>
+              <div className="result-header-actions">
+                {hasStagedEdits && !submitPhase && !draftChoices ? (
+                  <Button
+                    size="small"
+                    text="Re-check"
+                    loading={isRescoring}
+                    onClick={() => handleRecheck(previewParagraph)}
+                  />
+                ) : null}
+                <span className="staged-chip">{stagedEditsCount} staged</span>
+              </div>
             </div>
 
             {draftChoices ? (
@@ -569,12 +613,29 @@ export function App() {
               />
               Store personal information in profile/history
             </label>
-            <Button
-              intent="success"
-              text="Submit Changes"
-              loading={isSubmittingChanges}
-              onClick={handleSubmitChanges}
-            />
+            {submitPhase === "reviewing" ? (
+              <div className="submit-confirm-row">
+                <span className="recheck-notice muted">Review the re-scored version, then confirm.</span>
+                <Button
+                  intent="none"
+                  text="Keep editing"
+                  onClick={() => setSubmitPhase(null)}
+                />
+                <Button
+                  intent="success"
+                  text="Confirm & Submit"
+                  loading={isSubmittingChanges}
+                  onClick={handleConfirmSubmit}
+                />
+              </div>
+            ) : (
+              <Button
+                intent="success"
+                text="Submit Changes"
+                loading={isRescoring}
+                onClick={handleRequestReview}
+              />
+            )}
           </div>
         ) : null}
 
