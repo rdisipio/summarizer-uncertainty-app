@@ -360,6 +360,7 @@ export function App() {
               placeholder="Paste original text here..."
               rows={10}
               value={sourceText}
+              disabled={!!submitMessage}
               onChange={(event) => setSourceText(event.target.value)}
             />
             <div className="actions-row">
@@ -367,18 +368,21 @@ export function App() {
                 intent={selectedStyle === "shorten" ? "primary" : "none"}
                 text="Shorten"
                 loading={isLoading}
+                disabled={!!submitMessage}
                 onClick={() => handleGenerate("shorten")}
               />
               <Button
                 intent={selectedStyle === "professional" ? "primary" : "none"}
                 text="Professional"
                 loading={isLoading}
+                disabled={!!submitMessage}
                 onClick={() => handleGenerate("professional")}
               />
               <Button
                 intent={selectedStyle === "informal" ? "primary" : "none"}
                 text="Informal"
                 loading={isLoading}
+                disabled={!!submitMessage}
                 onClick={() => handleGenerate("informal")}
               />
             </div>
