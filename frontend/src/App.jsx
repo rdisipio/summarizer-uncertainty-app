@@ -547,7 +547,7 @@ export function App() {
                               content={getTooltipText(item, showUncertainty)}
                               hoverOpenDelay={80}
                             >
-                              <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}>
+                              <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""} ${Object.values(acceptedEditsBySentence).includes(item.sentence) ? "edited-sentence-bold" : ""}`}>
                                 {item.sentence}
                               </span>
                             </Tooltip>
