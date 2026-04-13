@@ -231,15 +231,6 @@ textarea[readonly] {
   gap: 8px;
 }
 
-.submit-confirm-row {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-}
-
-.recheck-notice {
-  font-size: 13px;
-}
 
 .staged-chip {
   background: var(--accent-soft);

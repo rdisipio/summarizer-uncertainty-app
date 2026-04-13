@@ -64,7 +64,6 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRescoring, setIsRescoring] = useState(false);
   const [isSubmittingChanges, setIsSubmittingChanges] = useState(false);
-  const [submitPhase, setSubmitPhase] = useState(null); // null | "reviewing" | "done"
   const [storePersonalData, setStorePersonalData] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -148,7 +147,6 @@ export function App() {
       setShowUncertainty(data.show_uncertainty !== false);
       setEditorialCards([]);
       setRescoredSentences(null);
-      setSubmitPhase(null);
 
       if (data.requires_choice && Array.isArray(data.drafts) && data.drafts.length === 2) {
         setDraftChoices({ drafts: data.drafts, avgUncertainty: data.avg_uncertainty ?? 0 });
@@ -281,14 +279,11 @@ export function App() {
     }
   };
 
-  const handleRequestReview = async () => {
-    if (!generatedSummary) return;
-    const textToScore = previewParagraph || generatedSummary;
-    await handleRecheck(textToScore);
-    setSubmitPhase("reviewing");
-  };
-
-  const handleConfirmSubmit = async () => {
+  const handleSubmitChanges = async () => {
+    if (!generatedSummary) {
+      setErrorMessage("Generate a summary before submitting.");
+      return;
+    }
     setIsSubmittingChanges(true);
     setErrorMessage("");
     setSubmitMessage("");
@@ -323,7 +318,6 @@ export function App() {
       }
 
       const data = await response.json();
-      setSubmitPhase("done");
       setSubmitMessage(
         data.edits_received > 0
           ? `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).`
@@ -350,7 +344,6 @@ export function App() {
     setDraftChoices(null);
     setRescoredSentences(null);
     setEditorialCards([]);
-    setSubmitPhase(null);
     setStorePersonalData(false);
     setSubmitMessage("");
     setErrorMessage("");
@@ -474,7 +467,7 @@ export function App() {
             <div className="result-header">
               <p className="section-title">AI Generated Draft</p>
               <div className="result-header-actions">
-                {hasStagedEdits && !submitPhase && !draftChoices ? (
+                {hasStagedEdits && !submitMessage && !draftChoices ? (
                   <Button
                     size="small"
                     text="Pre-check"
@@ -640,29 +633,12 @@ export function App() {
               />
               Store personal information in profile/history
             </label>
-            {submitPhase === "reviewing" ? (
-              <div className="submit-confirm-row">
-                <span className="recheck-notice muted">Review the re-scored version, then confirm.</span>
-                <Button
-                  intent="none"
-                  text="Keep editing"
-                  onClick={() => setSubmitPhase(null)}
-                />
-                <Button
-                  intent="success"
-                  text="Confirm & Submit"
-                  loading={isSubmittingChanges}
-                  onClick={handleConfirmSubmit}
-                />
-              </div>
-            ) : (
-              <Button
-                intent="success"
-                text="Submit Changes"
-                loading={isRescoring}
-                onClick={handleRequestReview}
-              />
-            )}
+            <Button
+              intent="success"
+              text="Submit Changes"
+              loading={isSubmittingChanges}
+              onClick={handleSubmitChanges}
+            />
           </div>
         ) : null}
 
