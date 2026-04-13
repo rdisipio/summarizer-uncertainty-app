@@ -353,17 +353,19 @@ def _score_sentences_with_hf_api(
     source_text: str,
     summary_text: str,
     sample_count: int,
+    seed: int | None = None,
 ) -> tuple[list[SentenceUncertainty], float, float] | None:
     """Call the HF Space sentence uncertainty API.
 
     Returns (sentences, band_low_max, band_high_low), or None if unavailable.
     Band assignment uses SENTENCE_BAND_LOW / SENTENCE_BAND_HIGH applied directly
     to the API's uncertainty_score (0–100); the API's own band field is ignored.
+    Pass a fixed seed for deterministic results; omit for a random seed.
     """
     if not HF_UNCERTAINTY_API_URL:
         return None
 
-    seed = _random.randint(0, 99999)
+    seed = seed if seed is not None else _random.randint(0, 99999)
     request_body = {
         "source": source_text,
         "summary": summary_text,
@@ -423,12 +425,14 @@ def _score_sentences_with_hf_api(
 def _get_scored_sentences(
     source_text: str,
     summary_text: str,
+    seed: int | None = None,
 ) -> tuple[list[SentenceUncertainty], float, float]:
     """Score summary sentences, falling back to random scores if the HF API is unavailable.
 
     Returns (sentences, band_low_max, band_high_low).
+    Pass a fixed seed for deterministic results; omit for a random seed.
     """
-    hf_result = _score_sentences_with_hf_api(source_text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT)
+    hf_result = _score_sentences_with_hf_api(source_text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT, seed)
     if hf_result is not None:
         return hf_result
 
@@ -508,9 +512,12 @@ def _mean_uncertainty(sentences: list[SentenceUncertainty]) -> float:
 
 @backend.post("/api/score", response_model=ScoreResponse)
 def score(payload: ScoreRequest) -> ScoreResponse:
-    """Score an edited paragraph against its source without calling the LLM."""
+    """Score an edited paragraph against its source without calling the LLM.
+
+    Uses a fixed seed for deterministic results across repeated pre-checks.
+    """
     logger.info("Score request received | text_length=%s", len(payload.text))
-    sentences, _, _ = _get_scored_sentences(payload.source, payload.text)
+    sentences, _, _ = _get_scored_sentences(payload.source, payload.text, seed=0)
     sentences = _apply_show_uncertainty(sentences)
     avg = _mean_uncertainty(sentences)
     logger.info("Score response ready | sentences=%s avg_uncertainty=%s", len(sentences), avg)
