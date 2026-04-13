@@ -91,9 +91,9 @@ SENTENCE_BAND_HIGH = _env_threshold_percent("SENTENCE_BAND_HIGH", 75.0)
 # Per-level thresholds for dual-draft generation (internal, not configurable via env).
 # When mean sentence uncertainty exceeds the selected level's value, two candidates are shown.
 DUAL_SUMMARY_THRESHOLDS: dict[str, float] = {
-    "relaxed": 0.35,
-    "normal": 0.25,
-    "conservative": 0.15,
+    "relaxed": 0.70,
+    "normal": 0.50,
+    "conservative": 0.30,
 }
 
 
@@ -583,14 +583,16 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     underlined_count = sum(1 for item in final_sentences if item.should_underline)
     logger.info(
         (
-            "Summarize response ready | style=%s llm_version=%s "
-            "sentences=%s underlined=%s avg_uncertainty=%s accepted_at=%s completed_at=%s"
+            "Summarize response ready | style=%s llm_version=%s threshold_level=%s "
+            "avg_uncertainty=%s threshold=%s sentences=%s underlined=%s accepted_at=%s completed_at=%s"
         ),
         payload.style,
         llm_version,
+        payload.threshold_level,
+        avg_a,
+        threshold,
         len(final_sentences),
         underlined_count,
-        avg_a,
         accepted_at,
         completed_at,
     )
