@@ -360,7 +360,7 @@ export function App() {
               placeholder="Paste original text here..."
               rows={10}
               value={sourceText}
-              disabled={!!submitMessage}
+              readOnly={!!submitMessage}
               onChange={(event) => setSourceText(event.target.value)}
             />
             <div className="actions-row">
@@ -453,6 +453,7 @@ export function App() {
                           key={`${index}-${item.sentence}`}
                           type="button"
                           className="sentence-button"
+                          disabled={!!submitMessage}
                           onClick={() => handleSentenceClick(item.sentence)}
                         >
                           <Tooltip

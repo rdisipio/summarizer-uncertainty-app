@@ -177,6 +177,10 @@ body {
   margin-top: 0;
 }
 
+textarea[readonly] {
+  color: var(--ink);
+}
+
 .setting-item input {
   border: 1px solid var(--line);
   border-radius: 8px;
