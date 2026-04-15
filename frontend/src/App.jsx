@@ -57,6 +57,7 @@ export function App() {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [showUncertainty, setShowUncertainty] = useState(true);
+  const [uncertaintyAvailable, setUncertaintyAvailable] = useState(true);
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
   const [draftChoices, setDraftChoices] = useState(null);
@@ -145,6 +146,7 @@ export function App() {
 
       const data = await response.json();
       setShowUncertainty(data.show_uncertainty !== false);
+      setUncertaintyAvailable(data.uncertainty_available !== false);
       setEditorialCards([]);
       setRescoredSentences(null);
 
@@ -355,6 +357,7 @@ export function App() {
     setSentences([]);
     setDraftChoices(null);
     setRescoredSentences(null);
+    setUncertaintyAvailable(true);
     setEditorialCards([]);
     setStorePersonalData(false);
     setSubmitMessage("");
@@ -398,6 +401,9 @@ export function App() {
         </header>
 
         {errorMessage ? <p className="notice error-text">{errorMessage}</p> : null}
+        {!uncertaintyAvailable ? (
+          <p className="notice error-text">Uncertainty scores are unavailable — the scoring service could not be reached.</p>
+        ) : null}
         {submitMessage ? (
           <div className="notice success-text submit-success-row">
             <span>{submitMessage}</span>

@@ -97,14 +97,6 @@ DUAL_SUMMARY_THRESHOLDS: dict[str, float] = {
 }
 
 
-def _uncertainty_band(score: float) -> str:
-    """Map a 0–1 uncertainty score to a display band."""
-    if score < UNCERTAINTY_BAND_LOW_MAX:
-        return "low"
-    if score < UNCERTAINTY_BAND_HIGH_LOW:
-        return "mid"
-    return "high"
-
 
 HF_UNCERTAINTY_API_URL = os.getenv(
     "HF_UNCERTAINTY_API_URL", "https://rdisipio-sentence-uncertainty.hf.space/score"
@@ -171,6 +163,7 @@ class SummarizeResponse(BaseModel):
     metadata: RequestMetadata
     style: str
     show_uncertainty: bool
+    uncertainty_available: bool = True
     requires_choice: bool = False
     avg_uncertainty: float = 0.0
     summary: str
@@ -281,12 +274,6 @@ def _extract_llm_text(payload: dict[str, Any]) -> str:
             return joined
     raise HTTPException(status_code=502, detail="OpenRouter returned empty content.")
 
-
-def _split_sentences(text: str) -> list[str]:
-    """Split generated paragraph into display sentences."""
-    chunks = re.split(r"(?<=[.!?])\s+", text.strip())
-    sentences = [chunk.strip() for chunk in chunks if chunk.strip()]
-    return sentences if sentences else [text.strip()]
 
 
 def _generate_summary_with_openrouter(payload: SummarizeRequest) -> tuple[str, str]:
@@ -426,35 +413,16 @@ def _get_scored_sentences(
     source_text: str,
     summary_text: str,
     seed: int | None = None,
-) -> tuple[list[SentenceUncertainty], float, float]:
-    """Score summary sentences, falling back to random scores if the HF API is unavailable.
+) -> tuple[list[SentenceUncertainty], float, float] | None:
+    """Score summary sentences via the HF API.
 
-    Returns (sentences, band_low_max, band_high_low).
+    Returns (sentences, band_low_max, band_high_low), or None if the HF API is unavailable.
     Pass a fixed seed for deterministic results; omit for a random seed.
     """
     hf_result = _score_sentences_with_hf_api(source_text, summary_text, HF_UNCERTAINTY_SAMPLE_COUNT, seed)
     if hf_result is not None:
         return hf_result
-
-    logger.warning("HF uncertainty API unavailable or returned no results — falling back to random scores.")
-    summary_sentences = _split_sentences(summary_text)
-    sentence_payloads: list[SentenceUncertainty] = []
-    for sentence in summary_sentences:
-        ambiguity = round(_random.random(), 4)
-        risk = round(_random.random(), 4)
-        uncertainty = round((ambiguity + risk) / 2, 4)
-        band = _uncertainty_band(uncertainty)
-        sentence_payloads.append(
-            SentenceUncertainty(
-                sentence=sentence,
-                ambiguity=ambiguity,
-                risk=risk,
-                uncertainty=uncertainty,
-                uncertainty_band=band,
-                should_underline=band != "low",
-            )
-        )
-    return sentence_payloads, UNCERTAINTY_BAND_LOW_MAX, UNCERTAINTY_BAND_HIGH_LOW
+    return None
 
 
 # In-memory cache for /api/score results.
@@ -558,7 +526,28 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         logger.exception("Summarize failed | style=%s llm_model=%s", payload.style, payload.llm_model)
         raise
 
-    sentences_a, band_low_max, band_high_low = _get_scored_sentences(payload.text, summary_a)
+    hf_result_a = _get_scored_sentences(payload.text, summary_a)
+    uncertainty_available = hf_result_a is not None
+
+    if not uncertainty_available:
+        logger.warning("HF uncertainty API unavailable — returning summary without uncertainty scores.")
+        completed_at = _utc_iso_now()
+        return SummarizeResponse(
+            metadata=RequestMetadata(
+                request_accepted_at=accepted_at,
+                request_completed_at=completed_at,
+                llm_version=llm_version,
+            ),
+            style=payload.style,
+            show_uncertainty=SHOW_UNCERTAINTY,
+            uncertainty_available=False,
+            summary=summary_a,
+            sentences=[],
+            band_low_max=UNCERTAINTY_BAND_LOW_MAX,
+            band_high_low=UNCERTAINTY_BAND_HIGH_LOW,
+        )
+
+    sentences_a, band_low_max, band_high_low = hf_result_a
     avg_a = _mean_uncertainty(sentences_a)
 
     threshold = DUAL_SUMMARY_THRESHOLDS[payload.threshold_level]
@@ -574,8 +563,14 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             sentences_b: list[SentenceUncertainty] = []
             avg_b = 0.0
         else:
-            sentences_b, _, _ = _get_scored_sentences(payload.text, summary_b)
-            avg_b = _mean_uncertainty(sentences_b)
+            hf_result_b = _get_scored_sentences(payload.text, summary_b)
+            if hf_result_b is not None:
+                sentences_b, _, _ = hf_result_b
+                avg_b = _mean_uncertainty(sentences_b)
+            else:
+                requires_choice = False
+                sentences_b = []
+                avg_b = 0.0
 
     completed_at = _utc_iso_now()
     metadata = RequestMetadata(
@@ -614,6 +609,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             metadata=metadata,
             style=payload.style,
             show_uncertainty=SHOW_UNCERTAINTY,
+            uncertainty_available=True,
             requires_choice=True,
             avg_uncertainty=avg_a,
             summary="",
@@ -644,6 +640,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         metadata=metadata,
         style=payload.style,
         show_uncertainty=SHOW_UNCERTAINTY,
+        uncertainty_available=True,
         requires_choice=False,
         avg_uncertainty=avg_a,
         summary=summary_a,
