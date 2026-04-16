@@ -92,8 +92,8 @@ SENTENCE_BAND_HIGH = _env_threshold_percent("SENTENCE_BAND_HIGH", 75.0)
 # When mean sentence uncertainty exceeds the selected level's value, two candidates are shown.
 DUAL_SUMMARY_THRESHOLDS: dict[str, float] = {
     "relaxed": 0.85,
-    "normal": 0.75,
-    "conservative": 0.60,
+    "normal": 0.50,
+    "conservative": 0.30,
 }
 
 
