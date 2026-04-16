@@ -94,6 +94,11 @@ export function App() {
   const hasStagedEdits = stagedEditsCount > 0;
 
   useEffect(() => {
+    // Fire-and-forget wake call so the API Space is warmed up before first use.
+    fetch(buildApiUrl("/wake"))
+      .then(() => console.log("API awake"))
+      .catch(() => {/* sleeping Space may 503 — ignore */});
+
     const loadConfig = async () => {
       try {
         const response = await fetch(buildApiUrl("/api/config"));
