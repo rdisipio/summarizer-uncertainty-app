@@ -446,6 +446,13 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@backend.get("/wake")
+def wake() -> dict[str, str]:
+    """Wake endpoint hit by the frontend on load to warm up this Space."""
+    logger.info("Wake call received")
+    return {"status": "awake"}
+
+
 @backend.get("/api/config", response_model=AppConfigResponse)
 def app_config() -> AppConfigResponse:
     """Return runtime configuration consumed by the frontend."""
