@@ -329,6 +329,11 @@ textarea[readonly] {
   color: var(--success);
 }
 
+.info-text {
+  background: #e8f0fb;
+  color: #1a56a0;
+}
+
 .cards-pane {
   margin-top: 14px;
 }

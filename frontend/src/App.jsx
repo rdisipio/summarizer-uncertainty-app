@@ -63,6 +63,7 @@ export function App() {
   const [editorialCards, setEditorialCards] = useState([]);
   const [draftChoices, setDraftChoices] = useState(null);
   const [rescoredSentences, setRescoredSentences] = useState(null);
+  const [scoringServerBooting, setScoringServerBooting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRescoring, setIsRescoring] = useState(false);
   const [isSubmittingChanges, setIsSubmittingChanges] = useState(false);
@@ -95,11 +96,43 @@ export function App() {
   const hasStagedEdits = stagedEditsCount > 0;
 
   useEffect(() => {
-    // Fire-and-forget wake call so the API Space is warmed up before first use.
+    let cancelled = false;
+    const POLL_INTERVAL_MS = 5_000;
+    const deadline = Date.now() + 120_000;
+
+    const pollReady = () => {
+      fetch(`${API_SERVER}/is-ready`)
+        .then((res) => res.json())
+        .then(({ ready }) => {
+          if (cancelled) return;
+          if (ready) {
+            console.log("API server ready");
+            setScoringServerBooting(false);
+          } else if (Date.now() < deadline) {
+            setTimeout(pollReady, POLL_INTERVAL_MS);
+          } else {
+            console.warn("API server did not become ready within 2 minutes");
+            setScoringServerBooting(false);
+          }
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (Date.now() < deadline) {
+            setTimeout(pollReady, POLL_INTERVAL_MS);
+          } else {
+            setScoringServerBooting(false);
+          }
+        });
+    };
+
     console.log("Waking API server...");
+    setScoringServerBooting(true);
     fetch(`${API_SERVER}/wake`)
       .then(() => console.log("API server awake"))
       .catch(() => {/* sleeping Space may 503 — ignore */});
+    setTimeout(pollReady, POLL_INTERVAL_MS);
+
+    return () => { cancelled = true; };
 
     const loadConfig = async () => {
       try {
@@ -407,6 +440,9 @@ export function App() {
           */}
         </header>
 
+        {scoringServerBooting ? (
+          <p className="notice info-text">Scoring server is starting up — uncertainty scores will be available shortly.</p>
+        ) : null}
         {errorMessage ? <p className="notice error-text">{errorMessage}</p> : null}
         {!uncertaintyAvailable ? (
           <p className="notice error-text">Uncertainty scores are unavailable — the scoring service could not be reached.</p>
