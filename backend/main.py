@@ -520,10 +520,10 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     both are returned as candidates for the user to choose between.
     """
     logger.info(
-        "Summarize request received | style=%s llm_model=%s text=%r",
+        "Summarize request received | style=%s llm_model=%s text_length=%s",
         payload.style,
         payload.llm_model,
-        payload.text,
+        len(payload.text),
     )
     accepted_at = _utc_iso_now()
 
