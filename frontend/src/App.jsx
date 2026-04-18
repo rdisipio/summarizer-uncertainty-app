@@ -96,8 +96,9 @@ export function App() {
 
   useEffect(() => {
     // Fire-and-forget wake call so the API Space is warmed up before first use.
+    console.log("Waking API server...");
     fetch(`${API_SERVER}/wake`)
-      .then(() => console.log("API awake"))
+      .then(() => console.log("API server awake"))
       .catch(() => {/* sleeping Space may 503 — ignore */});
 
     const loadConfig = async () => {
