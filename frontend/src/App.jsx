@@ -125,12 +125,30 @@ export function App() {
         });
     };
 
-    console.log("Waking API server...");
-    setScoringServerBooting(true);
-    fetch(`${API_SERVER}/wake`)
-      .then(() => console.log("API server awake"))
-      .catch(() => {/* sleeping Space may 503 — ignore */});
-    setTimeout(pollReady, POLL_INTERVAL_MS);
+    // Check readiness first — only show the booting banner and send a wake
+    // call if the server is not already up. This avoids a race where a
+    // restarting server still answers true on the first poll from its old
+    // instance before it actually goes down.
+    fetch(`${API_SERVER}/is-ready`)
+      .then((res) => res.json())
+      .then(({ ready }) => {
+        if (cancelled) return;
+        if (ready) {
+          console.log("API server already ready");
+        } else {
+          console.log("Waking API server...");
+          setScoringServerBooting(true);
+          fetch(`${API_SERVER}/wake`).catch(() => {});
+          setTimeout(pollReady, POLL_INTERVAL_MS);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        console.log("Waking API server...");
+        setScoringServerBooting(true);
+        fetch(`${API_SERVER}/wake`).catch(() => {});
+        setTimeout(pollReady, POLL_INTERVAL_MS);
+      });
 
     return () => { cancelled = true; };
 
