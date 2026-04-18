@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Card, Collapse, H3, HTMLSelect, TextArea, Tooltip } from "@blueprintjs/core";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const API_SERVER = import.meta.env.VITE_API_SERVER || "https://rdisipio-sentence-uncertainty.hf.space";
 const DEFAULT_EDIT_TAG = "editorial refinement";
 const EDIT_TAGS = ["editorial refinement", "factual error", "cultural bias"];
 const LLM_MODEL_OPTIONS = [
@@ -95,7 +96,7 @@ export function App() {
 
   useEffect(() => {
     // Fire-and-forget wake call so the API Space is warmed up before first use.
-    fetch(buildApiUrl("/wake"))
+    fetch(`${API_SERVER}/wake`)
       .then(() => console.log("API awake"))
       .catch(() => {/* sleeping Space may 503 — ignore */});
 
