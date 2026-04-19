@@ -3,6 +3,7 @@ import { Button, Card, Collapse, H3, HTMLSelect, TextArea, Tooltip } from "@blue
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const API_SERVER = import.meta.env.VITE_API_SERVER || "https://rdisipio-sentence-uncertainty.hf.space";
+const HEALTH_CHECK_INTERVAL_MS = Number(import.meta.env.VITE_HEALTH_CHECK_INTERVAL_MS) || 60_000;
 const DEFAULT_EDIT_TAG = "editorial refinement";
 const EDIT_TAGS = ["editorial refinement", "factual error", "cultural bias"];
 const LLM_MODEL_OPTIONS = [
@@ -64,6 +65,7 @@ export function App() {
   const [draftChoices, setDraftChoices] = useState(null);
   const [rescoredSentences, setRescoredSentences] = useState(null);
   const [scoringServerBooting, setScoringServerBooting] = useState(false);
+  const [serverAsleep, setServerAsleep] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isRescoring, setIsRescoring] = useState(false);
   const [isSubmittingChanges, setIsSubmittingChanges] = useState(false);
@@ -150,8 +152,6 @@ export function App() {
         setTimeout(pollReady, POLL_INTERVAL_MS);
       });
 
-    return () => { cancelled = true; };
-
     const loadConfig = async () => {
       try {
         const response = await fetch(buildApiUrl("/api/config"));
@@ -170,6 +170,67 @@ export function App() {
       }
     };
     void loadConfig();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let intervalId = null;
+
+    const startRecovery = () => {
+      const deadline = Date.now() + 120_000;
+      const poll = () => {
+        fetch(`${API_SERVER}/is-ready`)
+          .then((res) => res.json())
+          .then(({ ready }) => {
+            if (cancelled) return;
+            if (ready) {
+              console.log("API server recovered");
+              setServerAsleep(false);
+              intervalId = setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
+            } else if (Date.now() < deadline) {
+              setTimeout(poll, 5_000);
+            } else {
+              console.warn("API server did not recover within 2 minutes — resuming app");
+              setServerAsleep(false);
+              intervalId = setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
+            }
+          })
+          .catch(() => {
+            if (cancelled) return;
+            if (Date.now() < deadline) {
+              setTimeout(poll, 5_000);
+            } else {
+              setServerAsleep(false);
+              intervalId = setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
+            }
+          });
+      };
+      setTimeout(poll, 5_000);
+    };
+
+    // eslint-disable-next-line prefer-const
+    function checkHealth() {
+      fetch(`${API_SERVER}/health`)
+        .then((res) => { if (!res.ok) throw new Error("not ok"); })
+        .catch(() => {
+          if (cancelled) return;
+          clearInterval(intervalId);
+          intervalId = null;
+          console.warn("API server health check failed — waking");
+          setServerAsleep(true);
+          fetch(`${API_SERVER}/wake`).catch(() => {});
+          startRecovery();
+        });
+    }
+
+    intervalId = setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
   }, []);
 
   const handleGenerate = async (style) => {
@@ -458,6 +519,9 @@ export function App() {
           */}
         </header>
 
+        {serverAsleep ? (
+          <p className="notice warning-text">Scoring server went to sleep. Restart requested — please wait while it comes back online.</p>
+        ) : null}
         {scoringServerBooting ? (
           <p className="notice info-text">Scoring server is starting up — uncertainty scores will be available shortly.</p>
         ) : null}
@@ -481,7 +545,7 @@ export function App() {
               placeholder="Paste original text here..."
               rows={10}
               value={sourceText}
-              readOnly={!!submitMessage}
+              readOnly={!!submitMessage || serverAsleep}
               onChange={(event) => setSourceText(event.target.value)}
             />
             <div className="actions-row">
@@ -489,21 +553,21 @@ export function App() {
                 intent={selectedStyle === "shorten" ? "primary" : "none"}
                 text="Shorten"
                 loading={isLoading}
-                disabled={!!submitMessage}
+                disabled={!!submitMessage || serverAsleep}
                 onClick={() => handleGenerate("shorten")}
               />
               <Button
                 intent={selectedStyle === "professional" ? "primary" : "none"}
                 text="Professional"
                 loading={isLoading}
-                disabled={!!submitMessage}
+                disabled={!!submitMessage || serverAsleep}
                 onClick={() => handleGenerate("professional")}
               />
               <Button
                 intent={selectedStyle === "informal" ? "primary" : "none"}
                 text="Informal"
                 loading={isLoading}
-                disabled={!!submitMessage}
+                disabled={!!submitMessage || serverAsleep}
                 onClick={() => handleGenerate("informal")}
               />
             </div>
@@ -524,7 +588,7 @@ export function App() {
                     id="llm-model-input"
                     options={LLM_MODEL_OPTIONS}
                     value={selectedLlmModel}
-                    disabled={!!submitMessage}
+                    disabled={!!submitMessage || serverAsleep}
                     onChange={(event) => setSelectedLlmModel(event.target.value)}
                   />
                 </label>
@@ -534,7 +598,7 @@ export function App() {
                     id="threshold-level-input"
                     options={THRESHOLD_LEVEL_OPTIONS}
                     value={selectedThresholdLevel}
-                    disabled={!!submitMessage}
+                    disabled={!!submitMessage || serverAsleep}
                     onChange={(event) => setSelectedThresholdLevel(event.target.value)}
                   />
                 </label>
@@ -586,7 +650,7 @@ export function App() {
                           key={`${index}-${item.sentence}`}
                           type="button"
                           className="sentence-button"
-                          disabled={!!submitMessage}
+                          disabled={!!submitMessage || serverAsleep}
                           onClick={() => handleSentenceClick(item.sentence)}
                         >
                           <Tooltip

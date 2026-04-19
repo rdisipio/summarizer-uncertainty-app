@@ -334,6 +334,11 @@ textarea[readonly] {
   color: #1a56a0;
 }
 
+.warning-text {
+  background: #fef3cd;
+  color: #7d5a00;
+}
+
 .cards-pane {
   margin-top: 14px;
 }
