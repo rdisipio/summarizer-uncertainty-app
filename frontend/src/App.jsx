@@ -38,7 +38,7 @@ function getUnderlineClass(sentence) {
   return "";
 }
 
-function getTooltipText(sentence, showUncertainty) {
+function getTooltipText(sentence, showUncertainty, showAmbiguity) {
   if (!showUncertainty) {
     return undefined;
   }
@@ -47,7 +47,7 @@ function getTooltipText(sentence, showUncertainty) {
   const ambiguityPct = Math.round((sentence.ambiguity ?? sentence.uncertainty) * 100);
   return (
     <span className="uncertainty-tooltip">
-      Uncertainty: {band} ({uncertaintyPct}%) · Ambiguity: {ambiguityPct}%
+      Uncertainty: {band} ({uncertaintyPct}%){showAmbiguity ? ` · Ambiguity: ${ambiguityPct}%` : ""}
     </span>
   );
 }
@@ -60,6 +60,7 @@ export function App() {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [showUncertainty, setShowUncertainty] = useState(true);
+  const [showAmbiguity, setShowAmbiguity] = useState(false);
   const [uncertaintyAvailable, setUncertaintyAvailable] = useState(true);
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
@@ -165,6 +166,9 @@ export function App() {
         }
         if (typeof config.uncertainty_band_high_low === "number") {
           setBandHighLow(config.uncertainty_band_high_low);
+        }
+        if (typeof config.show_ambiguity === "boolean") {
+          setShowAmbiguity(config.show_ambiguity);
         }
       } catch {
         // Keep defaults if config endpoint is unavailable.
@@ -655,7 +659,7 @@ export function App() {
                           onClick={() => handleSentenceClick(item.sentence)}
                         >
                           <Tooltip
-                            content={getTooltipText(item, showUncertainty)}
+                            content={getTooltipText(item, showUncertainty, showAmbiguity)}
                             hoverOpenDelay={80}
                           >
                             <span
@@ -676,7 +680,7 @@ export function App() {
                         ? rescoredSentences.map((item, index) => (
                             <Tooltip
                               key={`${index}-${item.sentence}`}
-                              content={getTooltipText(item, showUncertainty)}
+                              content={getTooltipText(item, showUncertainty, showAmbiguity)}
                               hoverOpenDelay={80}
                             >
                               <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""} ${Object.values(acceptedEditsBySentence).includes(item.sentence) ? "edited-sentence-bold" : ""}`}>

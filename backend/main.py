@@ -104,6 +104,7 @@ HF_UNCERTAINTY_API_URL = os.getenv(
 HF_UNCERTAINTY_SAMPLE_COUNT = int(os.getenv("HF_UNCERTAINTY_SAMPLE_COUNT", "20"))
 
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
+SHOW_AMBIGUITY = _env_flag("SHOW_AMBIGUITY", False)
 SHOW_LOGO = _env_show_logo_flag(True)
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
@@ -220,6 +221,7 @@ class AppConfigResponse(BaseModel):
     """Runtime app feature flags and defaults for the frontend."""
 
     show_uncertainty: bool
+    show_ambiguity: bool
     show_logo: bool
     uncertainty_band_low_max: float
     uncertainty_band_high_low: float
@@ -459,6 +461,7 @@ def app_config() -> AppConfigResponse:
     """Return runtime configuration consumed by the frontend."""
     return AppConfigResponse(
         show_uncertainty=SHOW_UNCERTAINTY,
+        show_ambiguity=SHOW_AMBIGUITY,
         show_logo=SHOW_LOGO,
         uncertainty_band_low_max=UNCERTAINTY_BAND_LOW_MAX,
         uncertainty_band_high_low=UNCERTAINTY_BAND_HIGH_LOW,
