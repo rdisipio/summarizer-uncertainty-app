@@ -396,10 +396,11 @@ def _score_sentences_with_hf_api(
         else:
             band = "high"
         score = round(raw_score / 100.0, 4)
+        ambiguity = round(item.get("ambiguity_score", raw_score) / 100.0, 4)
         scored.append(
             SentenceUncertainty(
                 sentence=item.get("sentence_text", ""),
-                ambiguity=score,
+                ambiguity=ambiguity,
                 risk=score,
                 uncertainty=score,
                 uncertainty_band=band,
@@ -487,6 +488,12 @@ def _mean_uncertainty(sentences: list[SentenceUncertainty]) -> float:
     if not sentences:
         return 0.0
     return round(sum(item.uncertainty for item in sentences) / len(sentences), 4)
+
+
+def _mean_ambiguity(sentences: list[SentenceUncertainty]) -> float:
+    if not sentences:
+        return 0.0
+    return round(sum(item.ambiguity for item in sentences) / len(sentences), 4)
 
 
 @backend.post("/api/score", response_model=ScoreResponse)
@@ -628,15 +635,17 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
 
     final_sentences = _apply_show_uncertainty(sentences_a)
     underlined_count = sum(1 for item in final_sentences if item.should_underline)
+    avg_ambiguity_a = _mean_ambiguity(final_sentences)
     logger.info(
         (
             "Summarize response ready | style=%s llm_version=%s threshold_level=%s "
-            "avg_uncertainty=%s threshold=%s sentences=%s underlined=%s accepted_at=%s completed_at=%s"
+            "avg_uncertainty=%s avg_ambiguity=%s threshold=%s sentences=%s underlined=%s accepted_at=%s completed_at=%s"
         ),
         payload.style,
         llm_version,
         payload.threshold_level,
         avg_a,
+        avg_ambiguity_a,
         threshold,
         len(final_sentences),
         underlined_count,

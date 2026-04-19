@@ -43,10 +43,11 @@ function getTooltipText(sentence, showUncertainty) {
     return undefined;
   }
   const band = sentence.uncertainty_band;
-  const pct = Math.round(sentence.uncertainty * 100);
+  const uncertaintyPct = Math.round(sentence.uncertainty * 100);
+  const ambiguityPct = Math.round((sentence.ambiguity ?? sentence.uncertainty) * 100);
   return (
     <span className="uncertainty-tooltip">
-      Uncertainty: {band} ({pct}%)
+      Uncertainty: {band} ({uncertaintyPct}%) · Ambiguity: {ambiguityPct}%
     </span>
   );
 }
