@@ -610,7 +610,8 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         logger.info(
             (
                 "Dual-draft response | style=%s llm_version=%s threshold_level=%s "
-                "avg_uncertainty_a=%s avg_uncertainty_b=%s threshold=%s "
+                "avg_uncertainty_a=%s avg_uncertainty_b=%s "
+                "avg_ambiguity_a=%s avg_ambiguity_b=%s threshold=%s "
                 "accepted_at=%s completed_at=%s"
             ),
             payload.style,
@@ -618,6 +619,8 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             payload.threshold_level,
             avg_a,
             avg_b,
+            _mean_ambiguity(sentences_a),
+            _mean_ambiguity(sentences_b),
             threshold,
             accepted_at,
             completed_at,
