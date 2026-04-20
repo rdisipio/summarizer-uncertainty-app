@@ -112,6 +112,7 @@ def _require_api_token(credentials: HTTPAuthorizationCredentials = Depends(_http
 HF_UNCERTAINTY_API_URL = os.getenv(
     "HF_UNCERTAINTY_API_URL", "https://rdisipio-sentence-uncertainty.hf.space/score"
 )
+HF_UNCERTAINTY_API_TOKEN = os.getenv("HF_UNCERTAINTY_API_TOKEN", "")
 HF_UNCERTAINTY_SAMPLE_COUNT = int(os.getenv("HF_UNCERTAINTY_SAMPLE_COUNT", "20"))
 
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
@@ -373,11 +374,15 @@ def _score_sentences_with_hf_api(
         "seed": seed,
     }
 
+    hf_headers: dict[str, str] = {"Content-Type": "application/json"}
+    if HF_UNCERTAINTY_API_TOKEN:
+        hf_headers["X-Api-Token"] = HF_UNCERTAINTY_API_TOKEN
+
     try:
         with httpx.Client(timeout=120.0) as client:
             hf_response = client.post(
                 HF_UNCERTAINTY_API_URL,
-                headers={"Content-Type": "application/json"},
+                headers=hf_headers,
                 json=request_body,
             )
     except httpx.HTTPError as exc:
