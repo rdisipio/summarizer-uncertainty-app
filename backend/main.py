@@ -11,9 +11,10 @@ from typing import Literal
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 RewriteStyle = Literal["shorten", "professional", "informal"]
@@ -96,6 +97,16 @@ DUAL_SUMMARY_THRESHOLDS: dict[str, float] = {
     "conservative": 0.30,
 }
 
+
+
+API_TOKEN = os.getenv("API_TOKEN", "")
+
+_http_bearer = HTTPBearer(auto_error=True)
+
+
+def _require_api_token(credentials: HTTPAuthorizationCredentials = Depends(_http_bearer)) -> None:
+    if not API_TOKEN or credentials.credentials != API_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing API token.")
 
 
 HF_UNCERTAINTY_API_URL = os.getenv(
@@ -500,7 +511,7 @@ def _mean_ambiguity(sentences: list[SentenceUncertainty]) -> float:
 
 
 @backend.post("/api/score", response_model=ScoreResponse)
-def score(payload: ScoreRequest) -> ScoreResponse:
+def score(payload: ScoreRequest, _: None = Depends(_require_api_token)) -> ScoreResponse:
     """Score an edited paragraph against its source without calling the LLM.
 
     Results are cached by (source, text) so repeated pre-checks on identical
