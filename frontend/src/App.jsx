@@ -38,16 +38,17 @@ function getUnderlineClass(sentence) {
   return "";
 }
 
-function getTooltipText(sentence, showUncertainty, showAmbiguity) {
+function getTooltipText(sentence, showUncertainty, showAmbiguity, showConsistency) {
   if (!showUncertainty) {
     return undefined;
   }
   const band = sentence.uncertainty_band;
   const uncertaintyPct = Math.round(sentence.uncertainty * 100);
   const ambiguityPct = Math.round((sentence.ambiguity ?? sentence.uncertainty) * 100);
+  const consistencyPct = Math.round((sentence.consistency ?? sentence.uncertainty) * 100);
   return (
     <span className="uncertainty-tooltip">
-      Uncertainty: {band} ({uncertaintyPct}%){showAmbiguity ? ` · Ambiguity: ${ambiguityPct}%` : ""}
+      Uncertainty: {band} ({uncertaintyPct}%){showAmbiguity ? ` · Ambiguity: ${ambiguityPct}%` : ""}{showConsistency ? ` · Consistency: ${consistencyPct}%` : ""}
     </span>
   );
 }
@@ -61,6 +62,7 @@ export function App() {
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [showUncertainty, setShowUncertainty] = useState(true);
   const [showAmbiguity, setShowAmbiguity] = useState(false);
+  const [showConsistency, setShowConsistency] = useState(false);
   const [uncertaintyAvailable, setUncertaintyAvailable] = useState(true);
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
@@ -170,6 +172,9 @@ export function App() {
         }
         if (typeof config.show_ambiguity === "boolean") {
           setShowAmbiguity(config.show_ambiguity);
+        }
+        if (typeof config.show_consistency === "boolean") {
+          setShowConsistency(config.show_consistency);
         }
       } catch {
         // Keep defaults if config endpoint is unavailable.
@@ -676,7 +681,7 @@ export function App() {
                           onClick={() => handleSentenceClick(item.sentence)}
                         >
                           <Tooltip
-                            content={getTooltipText(item, showUncertainty, showAmbiguity)}
+                            content={getTooltipText(item, showUncertainty, showAmbiguity, showConsistency)}
                             hoverOpenDelay={80}
                           >
                             <span
@@ -697,7 +702,7 @@ export function App() {
                         ? rescoredSentences.map((item, index) => (
                             <Tooltip
                               key={`${index}-${item.sentence}`}
-                              content={getTooltipText(item, showUncertainty, showAmbiguity)}
+                              content={getTooltipText(item, showUncertainty, showAmbiguity, showConsistency)}
                               hoverOpenDelay={80}
                             >
                               <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""} ${Object.values(acceptedEditsBySentence).includes(item.sentence) ? "edited-sentence-bold" : ""}`}>
