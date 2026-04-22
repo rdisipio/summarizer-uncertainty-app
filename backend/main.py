@@ -118,6 +118,7 @@ HF_UNCERTAINTY_SAMPLE_COUNT = int(os.getenv("HF_UNCERTAINTY_SAMPLE_COUNT", "20")
 SHOW_UNCERTAINTY = _env_flag("SHOW_UNCERTAINTY", True)
 SHOW_AMBIGUITY = _env_flag("SHOW_AMBIGUITY", False)
 SHOW_CONSISTENCY = _env_flag("SHOW_CONSISTENCY", False)
+COMPUTE_CONSISTENCY = _env_flag("COMPUTE_CONSISTENCY", False)
 SHOW_LOGO = _env_show_logo_flag(True)
 FRONTEND_DIST_DIR = Path(os.getenv("FRONTEND_DIST_DIR", "frontend/dist"))
 
@@ -376,6 +377,7 @@ def _score_sentences_with_hf_api(
         "summary": summary_text,
         "sample_count": sample_count,
         "seed": seed,
+        "compute_consistency": COMPUTE_CONSISTENCY,
     }
 
     hf_headers: dict[str, str] = {"Content-Type": "application/json"}
