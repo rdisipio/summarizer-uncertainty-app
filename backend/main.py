@@ -500,6 +500,7 @@ def _apply_show_uncertainty(
         SentenceUncertainty(
             sentence=item.sentence,
             ambiguity=item.ambiguity,
+            consistency=item.consistency,
             risk=item.risk,
             uncertainty=item.uncertainty,
             uncertainty_band=item.uncertainty_band,
