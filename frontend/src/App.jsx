@@ -69,6 +69,7 @@ export function App() {
   const [scoringServerBooting, setScoringServerBooting] = useState(false);
   const [serverAsleep, setServerAsleep] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStatusMessage, setLoadingStatusMessage] = useState("");
   const [isRescoring, setIsRescoring] = useState(false);
   const [isSubmittingChanges, setIsSubmittingChanges] = useState(false);
   const [storePersonalData, setStorePersonalData] = useState(false);
@@ -237,6 +238,19 @@ export function App() {
       clearInterval(intervalId);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingStatusMessage("");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setLoadingStatusMessage(
+        "Still working\u2014if uncertainty was high, a second draft is being generated for comparison\u2026"
+      );
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   const handleGenerate = async (style) => {
     const text = sourceText.trim();
@@ -576,6 +590,9 @@ export function App() {
                 onClick={() => handleGenerate("informal")}
               />
             </div>
+            {loadingStatusMessage ? (
+              <p className="loading-status-message">{loadingStatusMessage}</p>
+            ) : null}
             <button
               type="button"
               className="advanced-toggle"
@@ -630,7 +647,7 @@ export function App() {
             {draftChoices ? (
               <div className="draft-choice-container">
                 <p className="draft-choice-notice">
-                  Uncertainty in generation too high. Choose the one that reads better.
+                  The first draft had high uncertainty ({(draftChoices.avgUncertainty * 100).toFixed(0)}%), so a second version was generated. Choose the one that reads better.
                 </p>
                 <div className="draft-choice-cards">
                   {draftChoices.drafts.map((draft, index) => (

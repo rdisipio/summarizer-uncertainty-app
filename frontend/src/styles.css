@@ -428,6 +428,18 @@ textarea[readonly] {
 }
 
 
+.loading-status-message {
+  background: #eef4ff;
+  border: 1px solid #b3ccf5;
+  border-radius: 8px;
+  color: #1a3a6b;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 10px 0 0;
+  padding: 8px 12px;
+}
+
+
 .draft-choice-container {
   display: flex;
   flex-direction: column;
