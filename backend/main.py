@@ -158,7 +158,7 @@ class SentenceUncertainty(BaseModel):
 
     sentence: str
     ambiguity: float
-    consistency: float
+    consistency: float | None = None
     risk: float
     uncertainty: float
     uncertainty_band: str
@@ -421,7 +421,8 @@ def _score_sentences_with_hf_api(
             band = "high"
         score = round(raw_score / 100.0, 4)
         ambiguity = round(item.get("ambiguity_score", raw_score) / 100.0, 4)
-        consistency = round(item.get("consistency_score", raw_score) / 100.0, 4)
+        raw_consistency = item.get("consistency_score")
+        consistency = round(raw_consistency / 100.0, 4) if raw_consistency is not None else None
         scored.append(
             SentenceUncertainty(
                 sentence=item.get("sentence_text", ""),
@@ -525,10 +526,11 @@ def _mean_ambiguity(sentences: list[SentenceUncertainty]) -> float:
     return round(sum(item.ambiguity for item in sentences) / len(sentences), 4)
 
 
-def _mean_consistency(sentences: list[SentenceUncertainty]) -> float:
-    if not sentences:
-        return 0.0
-    return round(sum(item.consistency for item in sentences) / len(sentences), 4)
+def _mean_consistency(sentences: list[SentenceUncertainty]) -> float | None:
+    values = [item.consistency for item in sentences if item.consistency is not None]
+    if not values:
+        return None
+    return round(sum(values) / len(values), 4)
 
 
 @backend.post("/api/score", response_model=ScoreResponse)

@@ -45,10 +45,10 @@ function getTooltipText(sentence, showUncertainty, showAmbiguity, showConsistenc
   const band = sentence.uncertainty_band;
   const uncertaintyPct = Math.round(sentence.uncertainty * 100);
   const ambiguityPct = Math.round((sentence.ambiguity ?? sentence.uncertainty) * 100);
-  const consistencyPct = Math.round((sentence.consistency ?? sentence.uncertainty) * 100);
+  const consistencyPct = sentence.consistency != null ? Math.round(sentence.consistency * 100) : null;
   return (
     <span className="uncertainty-tooltip">
-      Uncertainty: {band} ({uncertaintyPct}%){showAmbiguity ? ` · Ambiguity: ${ambiguityPct}%` : ""}{showConsistency ? ` · Consistency: ${consistencyPct}%` : ""}
+      Uncertainty: {band} ({uncertaintyPct}%){showAmbiguity ? ` · Ambiguity: ${ambiguityPct}%` : ""}{showConsistency && consistencyPct != null ? ` · Consistency: ${consistencyPct}%` : ""}
     </span>
   );
 }
