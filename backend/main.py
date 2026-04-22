@@ -178,6 +178,7 @@ class SummarizeResponse(BaseModel):
     metadata: RequestMetadata
     style: str
     show_uncertainty: bool
+    show_consistency: bool = False
     uncertainty_available: bool = True
     requires_choice: bool = False
     avg_uncertainty: float = 0.0
@@ -586,6 +587,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             ),
             style=payload.style,
             show_uncertainty=SHOW_UNCERTAINTY,
+            show_consistency=SHOW_CONSISTENCY,
             uncertainty_available=False,
             summary=summary_a,
             sentences=[],
@@ -661,6 +663,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             metadata=metadata,
             style=payload.style,
             show_uncertainty=SHOW_UNCERTAINTY,
+            show_consistency=SHOW_CONSISTENCY,
             uncertainty_available=True,
             requires_choice=True,
             avg_uncertainty=avg_a,
@@ -695,6 +698,7 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         metadata=metadata,
         style=payload.style,
         show_uncertainty=SHOW_UNCERTAINTY,
+        show_consistency=SHOW_CONSISTENCY,
         uncertainty_available=True,
         requires_choice=False,
         avg_uncertainty=avg_a,

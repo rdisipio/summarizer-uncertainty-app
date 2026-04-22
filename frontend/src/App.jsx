@@ -289,6 +289,7 @@ export function App() {
 
       const data = await response.json();
       setShowUncertainty(data.show_uncertainty !== false);
+      setShowConsistency(data.show_consistency === true);
       setUncertaintyAvailable(data.uncertainty_available !== false);
       setEditorialCards([]);
       setRescoredSentences(null);
