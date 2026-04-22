@@ -647,7 +647,7 @@ export function App() {
             {draftChoices ? (
               <div className="draft-choice-container">
                 <p className="draft-choice-notice">
-                  The first draft had high uncertainty ({(draftChoices.avgUncertainty * 100).toFixed(0)}%), so a second version was generated. Choose the one that reads better.
+                  The first draft had high uncertainty, a second version was generated. Choose the one that reads better.
                 </p>
                 <div className="draft-choice-cards">
                   {draftChoices.drafts.map((draft, index) => (
