@@ -246,7 +246,7 @@ export function App() {
     }
     const timer = setTimeout(() => {
       setLoadingStatusMessage(
-        "Still working\u2014if uncertainty was high, a second draft is being generated for comparison\u2026"
+        "Still working\u2026"
       );
     }, 7000);
     return () => clearTimeout(timer);
