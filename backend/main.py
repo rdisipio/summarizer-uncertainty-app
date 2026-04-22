@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 import random as _random
@@ -384,22 +385,37 @@ def _score_sentences_with_hf_api(
     if HF_UNCERTAINTY_API_TOKEN:
         hf_headers["X-Api-Token"] = HF_UNCERTAINTY_API_TOKEN
 
-    try:
-        with httpx.Client(timeout=120.0) as client:
-            hf_response = client.post(
-                HF_UNCERTAINTY_API_URL,
-                headers=hf_headers,
-                json=request_body,
-            )
-    except httpx.HTTPError as exc:
-        logger.warning("HF uncertainty API request failed: %s", exc)
-        return None
+    hf_response = None
+    for attempt in range(1, 4):
+        try:
+            with httpx.Client(timeout=120.0) as client:
+                hf_response = client.post(
+                    HF_UNCERTAINTY_API_URL,
+                    headers=hf_headers,
+                    json=request_body,
+                )
+        except httpx.HTTPError as exc:
+            logger.warning("HF uncertainty API request failed (attempt %s/3): %s", attempt, exc)
+            return None
 
-    if hf_response.status_code >= 400:
+        if hf_response.status_code not in (429, 503):
+            break
+
+        retry_after = int(hf_response.headers.get("Retry-After", 5 * attempt))
+        logger.warning(
+            "HF uncertainty API rate-limited | status=%s attempt=%s/3 retry_after=%ss",
+            hf_response.status_code,
+            attempt,
+            retry_after,
+        )
+        if attempt < 3:
+            time.sleep(retry_after)
+
+    if hf_response is None or hf_response.status_code >= 400:
         logger.warning(
             "HF uncertainty API returned error | status=%s body=%s",
-            hf_response.status_code,
-            hf_response.text[:500],
+            hf_response.status_code if hf_response else "N/A",
+            hf_response.text[:500] if hf_response else "",
         )
         return None
 
