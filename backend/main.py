@@ -113,6 +113,7 @@ def _require_api_token(credentials: HTTPAuthorizationCredentials = Depends(_http
 HF_UNCERTAINTY_API_URL = os.getenv(
     "HF_UNCERTAINTY_API_URL", "https://rdisipio-sentence-uncertainty.hf.space/score"
 )
+HF_TOKEN = os.getenv("HF_TOKEN", "")
 HF_UNCERTAINTY_API_TOKEN = os.getenv("HF_UNCERTAINTY_API_TOKEN", "")
 HF_UNCERTAINTY_SAMPLE_COUNT = int(os.getenv("HF_UNCERTAINTY_SAMPLE_COUNT", "20"))
 
@@ -382,6 +383,8 @@ def _score_sentences_with_hf_api(
     }
 
     hf_headers: dict[str, str] = {"Content-Type": "application/json"}
+    if HF_TOKEN:
+        hf_headers["Authorization"] = f"Bearer {HF_TOKEN}"
     if HF_UNCERTAINTY_API_TOKEN:
         hf_headers["X-Api-Token"] = HF_UNCERTAINTY_API_TOKEN
 
