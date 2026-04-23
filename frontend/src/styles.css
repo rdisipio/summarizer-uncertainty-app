@@ -241,6 +241,11 @@ textarea[readonly] {
   padding: 4px 10px;
 }
 
+.staged-chip-override {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+
 .placeholder-text {
   color: var(--muted);
   margin: 0;

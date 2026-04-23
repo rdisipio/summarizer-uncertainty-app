@@ -104,8 +104,9 @@ export function App() {
           isEdited: Boolean(acceptedEditsBySentence[item.sentence])
         }))
       : [];
-  const stagedEditsCount = editorialCards.filter((card) => card.isAccepted).length;
-  const hasStagedEdits = stagedEditsCount > 0;
+  const stagedEditsCount = editorialCards.filter((card) => card.isAccepted && card.correction.trim()).length;
+  const stagedOverridesCount = editorialCards.filter((card) => card.isAccepted && card.overrideBand != null).length;
+  const hasStagedEdits = stagedEditsCount > 0 || stagedOverridesCount > 0;
   const bandOverridesBySentence = editorialCards.reduce((acc, card) => {
     if (card.overrideBand != null) acc[card.sentence] = card.overrideBand;
     return acc;
@@ -724,7 +725,9 @@ export function App() {
                     onClick={() => handleRecheck(previewParagraph)}
                   />
                 ) : null}
-                <span className="staged-chip">{stagedEditsCount} staged</span>
+                {stagedEditsCount > 0 && <span className="staged-chip">{stagedEditsCount} {stagedEditsCount === 1 ? "edit" : "edits"}</span>}
+                {stagedOverridesCount > 0 && <span className="staged-chip staged-chip-override">{stagedOverridesCount} {stagedOverridesCount === 1 ? "override" : "overrides"}</span>}
+                {stagedEditsCount === 0 && stagedOverridesCount === 0 && <span className="staged-chip">0 staged</span>}
               </div>
             </div>
 
