@@ -469,7 +469,7 @@ export function App() {
   const handleBandOverride = (cardId, band) => {
     setEditorialCards((previousCards) =>
       previousCards.map((card) =>
-        card.id === cardId ? { ...card, overrideBand: band } : card
+        card.id === cardId ? { ...card, overrideBand: band, isAccepted: false } : card
       )
     );
   };
