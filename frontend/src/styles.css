@@ -31,7 +31,7 @@ body {
 
 .canvas {
   margin: 0 auto;
-  max-width: 1120px;
+  max-width: min(1400px, 96vw);
 }
 
 .masthead {
@@ -132,7 +132,7 @@ body {
 .workspace-grid {
   display: grid;
   gap: 14px;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: minmax(340px, 1fr) minmax(480px, 1.6fr);
 }
 
 .panel {
