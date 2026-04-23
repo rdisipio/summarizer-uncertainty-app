@@ -320,6 +320,10 @@ textarea[readonly] {
   font-weight: 700;
 }
 
+.tooltip-ai-band {
+  opacity: 0.55;
+}
+
 .muted {
   color: var(--muted);
 }

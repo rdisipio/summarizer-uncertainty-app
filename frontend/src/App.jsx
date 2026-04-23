@@ -4,6 +4,7 @@ import { Button, Card, Collapse, H3, HTMLSelect, TextArea, Tooltip } from "@blue
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const API_SERVER = import.meta.env.VITE_API_SERVER || "https://rdisipio-sentence-uncertainty.hf.space";
 const HEALTH_CHECK_INTERVAL_MS = Number(import.meta.env.VITE_HEALTH_CHECK_INTERVAL_MS) || 60_000;
+const SHOW_PERCENT_TOOLTIP = import.meta.env.VITE_SHOW_PERCENT_TOOLTIP === "true"; // default: false
 const DEFAULT_EDIT_TAG = "editorial refinement";
 const EDIT_TAGS = ["editorial refinement", "factual error", "cultural bias"];
 const LLM_MODEL_OPTIONS = [
@@ -38,17 +39,26 @@ function getUnderlineClass(sentence, overrideBand) {
   return "";
 }
 
-function getTooltipText(sentence, showUncertainty, showAmbiguity, showConsistency) {
+function getTooltipText(sentence, showUncertainty, showAmbiguity, showConsistency, overrideBand) {
   if (!showUncertainty) {
     return undefined;
   }
-  const band = sentence.uncertainty_band;
+  const aiBand = sentence.uncertainty_band;
+  const hasOverride = overrideBand != null && overrideBand !== aiBand;
   const uncertaintyPct = Math.round(sentence.uncertainty * 100);
   const ambiguityPct = Math.round((sentence.ambiguity ?? sentence.uncertainty) * 100);
   const consistencyPct = sentence.consistency != null ? Math.round(sentence.consistency * 100) : null;
+  const pctSuffix = SHOW_PERCENT_TOOLTIP ? ` (${uncertaintyPct}%)` : "";
   return (
     <span className="uncertainty-tooltip">
-      Uncertainty: {band} ({uncertaintyPct}%){showAmbiguity ? ` · Ambiguity: ${ambiguityPct}%` : ""}{showConsistency && consistencyPct != null ? ` · Consistency: ${consistencyPct}%` : ""}
+      {"Uncertainty: "}
+      {hasOverride
+        ? <><s className="tooltip-ai-band">{aiBand}</s>{" → "}<strong>{overrideBand}</strong></>
+        : aiBand
+      }
+      {pctSuffix}
+      {showAmbiguity ? ` · Ambiguity: ${ambiguityPct}%` : ""}
+      {showConsistency && consistencyPct != null ? ` · Consistency: ${consistencyPct}%` : ""}
     </span>
   );
 }
@@ -769,7 +779,7 @@ export function App() {
                           onClick={() => handleSentenceClick(item.sentence)}
                         >
                           <Tooltip
-                            content={getTooltipText(item, showUncertainty, showAmbiguity, showConsistency)}
+                            content={getTooltipText(item, showUncertainty, showAmbiguity, showConsistency, bandOverridesBySentence[item.sentence])}
                             hoverOpenDelay={80}
                           >
                             <span
@@ -850,7 +860,7 @@ export function App() {
                         ? rescoredSentences.map((item, index) => (
                             <Tooltip
                               key={`${index}-${item.sentence}`}
-                              content={getTooltipText(item, showUncertainty, showAmbiguity, showConsistency)}
+                              content={getTooltipText(item, showUncertainty, showAmbiguity, showConsistency, bandOverridesBySentence[item.sentence])}
                               hoverOpenDelay={80}
                             >
                               <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item, bandOverridesBySentence[item.sentence]) : ""} ${Object.values(acceptedEditsBySentence).includes(item.sentence) ? "edited-sentence-bold" : ""}`}>
