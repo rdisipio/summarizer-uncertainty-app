@@ -147,6 +147,8 @@ class SummarizeRequest(BaseModel):
     style: RewriteStyle
     llm_model: str = Field(default=DEFAULT_LLM_VERSION, min_length=1)
     threshold_level: ThresholdLevel = "normal"
+    force_alternative: bool = False
+    existing_summary: str | None = None
 
 
 class RequestMetadata(BaseModel):
@@ -186,6 +188,7 @@ class SummarizeResponse(BaseModel):
     show_consistency: bool = False
     uncertainty_available: bool = True
     requires_choice: bool = False
+    uncertainty_warning: bool = False
     avg_uncertainty: float = 0.0
     summary: str
     sentences: list[SentenceUncertainty]
@@ -581,18 +584,102 @@ def score(payload: ScoreRequest, _: None = Depends(_require_api_token)) -> Score
 def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     """Generate a rewritten paragraph and attach uncertainty annotations.
 
-    When SHOW_UNCERTAINTY is enabled and the mean sentence uncertainty of the
-    first draft exceeds DUAL_SUMMARY_THRESHOLD, a second draft is generated and
-    both are returned as candidates for the user to choose between.
+    Normal flow: generate draft A, score it. If uncertainty exceeds the
+    threshold, return it immediately with uncertainty_warning=True so the
+    client can ask the user whether to compare.
+
+    force_alternative flow: the client re-sends with force_alternative=True
+    and the existing draft A text. The backend scores A, generates a fresh
+    draft B, scores it, and returns both as requires_choice=True.
     """
     logger.info(
-        "Summarize request received | style=%s llm_model=%s text_length=%s",
+        "Summarize request received | style=%s llm_model=%s text_length=%s force_alternative=%s",
         payload.style,
         payload.llm_model,
         len(payload.text),
+        payload.force_alternative,
     )
     accepted_at = _utc_iso_now()
+    llm_version = _resolve_model(payload.llm_model)
 
+    # --- force_alternative: use existing draft A, generate fresh draft B ---
+    if payload.force_alternative and payload.existing_summary:
+        summary_a = payload.existing_summary
+        hf_result_a = _get_scored_sentences(payload.text, summary_a)
+
+        try:
+            summary_b, llm_version = _generate_summary_with_openrouter(payload)
+        except HTTPException:
+            logger.warning("Alternative draft generation failed — returning single draft.")
+            raise
+
+        hf_result_b = _get_scored_sentences(payload.text, summary_b)
+        completed_at = _utc_iso_now()
+        metadata = RequestMetadata(
+            request_accepted_at=accepted_at,
+            request_completed_at=completed_at,
+            llm_version=llm_version,
+        )
+
+        if hf_result_a is not None and hf_result_b is not None:
+            sentences_a, band_low_max, band_high_low = hf_result_a
+            sentences_b, _, _ = hf_result_b
+            avg_a = _mean_uncertainty(sentences_a)
+            avg_b = _mean_uncertainty(sentences_b)
+            draft_a = DraftCandidate(
+                summary=summary_a,
+                sentences=_apply_show_uncertainty(sentences_a),
+                avg_uncertainty=avg_a,
+            )
+            draft_b = DraftCandidate(
+                summary=summary_b,
+                sentences=_apply_show_uncertainty(sentences_b),
+                avg_uncertainty=avg_b,
+            )
+            logger.info(
+                (
+                    "Dual-draft response (on-demand) | style=%s llm_version=%s "
+                    "avg_uncertainty_a=%s avg_uncertainty_b=%s accepted_at=%s completed_at=%s"
+                ),
+                payload.style,
+                llm_version,
+                avg_a,
+                avg_b,
+                accepted_at,
+                completed_at,
+            )
+            return SummarizeResponse(
+                metadata=metadata,
+                style=payload.style,
+                show_uncertainty=SHOW_UNCERTAINTY,
+                show_consistency=SHOW_CONSISTENCY,
+                uncertainty_available=True,
+                requires_choice=True,
+                avg_uncertainty=avg_a,
+                summary="",
+                sentences=[],
+                drafts=[draft_a, draft_b],
+                band_low_max=band_low_max if hf_result_a else UNCERTAINTY_BAND_LOW_MAX,
+                band_high_low=band_high_low if hf_result_a else UNCERTAINTY_BAND_HIGH_LOW,
+            )
+        # Scoring unavailable — return B as a plain summary
+        final_sentences_b: list[SentenceUncertainty] = []
+        if hf_result_b:
+            raw_b, band_low_max, band_high_low = hf_result_b
+            final_sentences_b = _apply_show_uncertainty(raw_b)
+        return SummarizeResponse(
+            metadata=metadata,
+            style=payload.style,
+            show_uncertainty=SHOW_UNCERTAINTY,
+            show_consistency=SHOW_CONSISTENCY,
+            uncertainty_available=hf_result_b is not None,
+            summary=summary_b,
+            sentences=final_sentences_b,
+            band_low_max=UNCERTAINTY_BAND_LOW_MAX,
+            band_high_low=UNCERTAINTY_BAND_HIGH_LOW,
+        )
+
+    # --- Normal flow: generate draft A ---
     try:
         summary_a, llm_version = _generate_summary_with_openrouter(payload)
     except HTTPException:
@@ -623,28 +710,8 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
 
     sentences_a, band_low_max, band_high_low = hf_result_a
     avg_a = _mean_uncertainty(sentences_a)
-
     threshold = DUAL_SUMMARY_THRESHOLDS[payload.threshold_level]
-    requires_choice = SHOW_UNCERTAINTY and avg_a > threshold
-
-    if requires_choice:
-        try:
-            summary_b, _ = _generate_summary_with_openrouter(payload)
-        except HTTPException:
-            logger.warning("Second draft generation failed — falling back to single draft.")
-            requires_choice = False
-            summary_b = ""
-            sentences_b: list[SentenceUncertainty] = []
-            avg_b = 0.0
-        else:
-            hf_result_b = _get_scored_sentences(payload.text, summary_b)
-            if hf_result_b is not None:
-                sentences_b, _, _ = hf_result_b
-                avg_b = _mean_uncertainty(sentences_b)
-            else:
-                requires_choice = False
-                sentences_b = []
-                avg_b = 0.0
+    above_threshold = SHOW_UNCERTAINTY and avg_a > threshold
 
     completed_at = _utc_iso_now()
     metadata = RequestMetadata(
@@ -653,34 +720,16 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
         llm_version=llm_version,
     )
 
-    if requires_choice:
-        draft_a = DraftCandidate(
-            summary=summary_a,
-            sentences=_apply_show_uncertainty(sentences_a),
-            avg_uncertainty=avg_a,
-        )
-        draft_b = DraftCandidate(
-            summary=summary_b,
-            sentences=_apply_show_uncertainty(sentences_b),
-            avg_uncertainty=avg_b,
-        )
+    if above_threshold:
+        final_sentences = _apply_show_uncertainty(sentences_a)
         logger.info(
             (
-                "Dual-draft response | style=%s llm_version=%s threshold_level=%s "
-                "avg_uncertainty_a=%s avg_uncertainty_b=%s "
-                "avg_ambiguity_a=%s avg_ambiguity_b=%s "
-                "avg_consistency_a=%s avg_consistency_b=%s threshold=%s "
-                "accepted_at=%s completed_at=%s"
+                "High-uncertainty draft — returning with warning | style=%s llm_version=%s "
+                "avg_uncertainty=%s threshold=%s accepted_at=%s completed_at=%s"
             ),
             payload.style,
             llm_version,
-            payload.threshold_level,
             avg_a,
-            avg_b,
-            _mean_ambiguity(sentences_a),
-            _mean_ambiguity(sentences_b),
-            _mean_consistency(sentences_a),
-            _mean_consistency(sentences_b),
             threshold,
             accepted_at,
             completed_at,
@@ -691,11 +740,10 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
             show_uncertainty=SHOW_UNCERTAINTY,
             show_consistency=SHOW_CONSISTENCY,
             uncertainty_available=True,
-            requires_choice=True,
+            uncertainty_warning=True,
             avg_uncertainty=avg_a,
-            summary="",
-            sentences=[],
-            drafts=[draft_a, draft_b],
+            summary=summary_a,
+            sentences=final_sentences,
             band_low_max=band_low_max,
             band_high_low=band_high_low,
         )

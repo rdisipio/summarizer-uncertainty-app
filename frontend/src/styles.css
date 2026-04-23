@@ -494,6 +494,32 @@ textarea[readonly] {
   align-self: flex-start;
 }
 
+.uncertainty-warning {
+  align-items: center;
+  background: #fef8ec;
+  border: 1px solid #e8d8a0;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 10px 14px;
+}
+
+.uncertainty-warning-text {
+  color: #6b4f00;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.uncertainty-warning-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
 .band-override-row {
   align-items: center;
   display: flex;

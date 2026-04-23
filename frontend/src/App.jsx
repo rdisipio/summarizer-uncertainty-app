@@ -67,6 +67,8 @@ export function App() {
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
   const [draftChoices, setDraftChoices] = useState(null);
+  const [uncertaintyWarning, setUncertaintyWarning] = useState(false);
+  const [isComparing, setIsComparing] = useState(false);
   const [draftFeedback, setDraftFeedback] = useState(false);
   const [showDraftFeedbackOther, setShowDraftFeedbackOther] = useState(false);
   const [draftFeedbackOtherText, setDraftFeedbackOtherText] = useState("");
@@ -275,6 +277,7 @@ export function App() {
     setErrorMessage("");
     setSubmitMessage("");
     setSelectedStyle(style);
+    setUncertaintyWarning(false);
 
     try {
       const response = await fetch(buildApiUrl("/api/summarize"), {
@@ -305,10 +308,12 @@ export function App() {
         setDraftChoices({ drafts: data.drafts, avgUncertainty: data.avg_uncertainty ?? 0 });
         setGeneratedSummary("");
         setSentences([]);
+        setUncertaintyWarning(false);
       } else {
         setDraftChoices(null);
         setGeneratedSummary(data.summary || "");
         setSentences(Array.isArray(data.sentences) ? data.sentences : []);
+        setUncertaintyWarning(data.uncertainty_warning === true);
       }
     } catch (error) {
       setGeneratedSummary("");
@@ -347,6 +352,43 @@ export function App() {
       });
     } catch {
       // non-critical
+    }
+  };
+
+  const handleCompareVersions = async () => {
+    setIsComparing(true);
+    setErrorMessage("");
+    try {
+      const response = await fetch(buildApiUrl("/api/summarize"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: sourceText,
+          style: selectedStyle,
+          llm_model: selectedLlmModel,
+          threshold_level: selectedThresholdLevel,
+          force_alternative: true,
+          existing_summary: generatedSummary,
+        }),
+      });
+      if (!response.ok) throw new Error(await extractApiError(response));
+      const data = await response.json();
+      if (data.requires_choice && Array.isArray(data.drafts) && data.drafts.length === 2) {
+        setDraftChoices({ drafts: data.drafts, avgUncertainty: data.avg_uncertainty ?? 0 });
+        setGeneratedSummary("");
+        setSentences([]);
+        setUncertaintyWarning(false);
+        setEditorialCards([]);
+        setRescoredSentences(null);
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof TypeError
+          ? "Network error: could not reach backend service."
+          : error instanceof Error ? error.message : "Unknown error."
+      );
+    } finally {
+      setIsComparing(false);
     }
   };
 
@@ -535,6 +577,7 @@ export function App() {
     setGeneratedSummary("");
     setSentences([]);
     setDraftChoices(null);
+    setUncertaintyWarning(false);
     setRescoredSentences(null);
     setUncertaintyAvailable(true);
     setEditorialCards([]);
@@ -730,6 +773,29 @@ export function App() {
                       ))
                     : generatedSummary}
                 </p>
+                {uncertaintyWarning && (
+                  <div className="uncertainty-warning">
+                    <span className="uncertainty-warning-text">
+                      Some sentences have elevated uncertainty. Generate an alternative to compare?
+                    </span>
+                    <div className="uncertainty-warning-actions">
+                      <Button
+                        outlined
+                        small
+                        text="Compare versions"
+                        loading={isComparing}
+                        onClick={handleCompareVersions}
+                      />
+                      <Button
+                        minimal
+                        small
+                        text="Dismiss"
+                        disabled={isComparing}
+                        onClick={() => setUncertaintyWarning(false)}
+                      />
+                    </div>
+                  </div>
+                )}
                 {draftFeedback && (
                   <div className="draft-followup">
                     <p className="draft-followup-prompt">What made this version better?</p>
