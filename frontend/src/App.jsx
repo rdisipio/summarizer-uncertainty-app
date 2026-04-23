@@ -394,8 +394,8 @@ export function App() {
 
   const handleAcceptEdit = (cardId) => {
     const targetCard = editorialCards.find((card) => card.id === cardId);
-    if (!targetCard || !targetCard.correction.trim()) {
-      setErrorMessage("Add a correction before accepting the edit.");
+    if (!targetCard || (!targetCard.correction.trim() && targetCard.overrideBand == null)) {
+      setErrorMessage("Add a correction or change the uncertainty band before accepting.");
       return;
     }
     setErrorMessage("");
