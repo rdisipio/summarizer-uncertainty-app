@@ -102,7 +102,7 @@ export function App() {
           isEdited: Boolean(acceptedEditsBySentence[item.sentence])
         }))
       : [];
-  const stagedEditsCount = Object.keys(acceptedEditsBySentence).length;
+  const stagedEditsCount = editorialCards.filter((card) => card.isAccepted).length;
   const hasStagedEdits = stagedEditsCount > 0;
   const bandOverridesBySentence = editorialCards.reduce((acc, card) => {
     if (card.overrideBand != null) acc[card.sentence] = card.overrideBand;
