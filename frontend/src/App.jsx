@@ -731,7 +731,7 @@ export function App() {
             {draftChoices ? (
               <div className="draft-choice-container">
                 <p className="draft-choice-notice">
-                  The first draft had high uncertainty, a second version was generated. Choose the one that reads better.
+                  Choose the version that reads better.
                 </p>
                 <div className="draft-choice-cards">
                   {draftChoices.drafts.map((draft, index) => (
