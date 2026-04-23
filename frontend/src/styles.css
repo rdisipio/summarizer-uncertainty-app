@@ -494,6 +494,52 @@ textarea[readonly] {
   align-self: flex-start;
 }
 
+.draft-followup {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+}
+
+.draft-followup-prompt {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.draft-followup-options {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.draft-followup-skip {
+  color: var(--muted) !important;
+  margin-left: 2px;
+}
+
+.draft-followup-other {
+  display: flex;
+  gap: 8px;
+}
+
+.draft-followup-input {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  flex: 1;
+  font-size: 14px;
+  outline: none;
+  padding: 4px 8px;
+}
+
+.draft-followup-input:focus {
+  border-color: var(--accent);
+}
+
 @media (max-width: 600px) {
   .draft-choice-cards {
     grid-template-columns: 1fr;

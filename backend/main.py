@@ -732,6 +732,16 @@ def summarize(payload: SummarizeRequest) -> SummarizeResponse:
     )
 
 
+class DraftFeedbackRequest(BaseModel):
+    reason: str = Field(..., max_length=500)
+
+
+@backend.post("/api/draft-feedback", status_code=204)
+def submit_draft_feedback(payload: DraftFeedbackRequest) -> None:
+    """Log the reason a user chose one draft over the other."""
+    logger.info("Draft feedback received | reason=%s", payload.reason)
+
+
 @backend.post("/api/editorial-changes", response_model=EditorialChangesResponse)
 def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChangesResponse:
     """Receive staged editorial changes without applying business processing."""

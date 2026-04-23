@@ -67,6 +67,9 @@ export function App() {
   const [sentences, setSentences] = useState([]);
   const [editorialCards, setEditorialCards] = useState([]);
   const [draftChoices, setDraftChoices] = useState(null);
+  const [draftFeedback, setDraftFeedback] = useState(false);
+  const [showDraftFeedbackOther, setShowDraftFeedbackOther] = useState(false);
+  const [draftFeedbackOtherText, setDraftFeedbackOtherText] = useState("");
   const [rescoredSentences, setRescoredSentences] = useState(null);
   const [scoringServerBooting, setScoringServerBooting] = useState(false);
   const [serverAsleep, setServerAsleep] = useState(false);
@@ -322,6 +325,25 @@ export function App() {
     setGeneratedSummary(draft.summary);
     setSentences(Array.isArray(draft.sentences) ? draft.sentences : []);
     setDraftChoices(null);
+    setDraftFeedback(true);
+    setShowDraftFeedbackOther(false);
+    setDraftFeedbackOtherText("");
+  };
+
+  const handleDraftFeedback = async (reason) => {
+    setDraftFeedback(false);
+    setShowDraftFeedbackOther(false);
+    setDraftFeedbackOtherText("");
+    if (!reason) return;
+    try {
+      await fetch(buildApiUrl("/api/draft-feedback"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+    } catch {
+      // non-critical
+    }
   };
 
   const handleSentenceClick = (sentence) => {
@@ -695,6 +717,43 @@ export function App() {
                       ))
                     : generatedSummary}
                 </p>
+                {draftFeedback && (
+                  <div className="draft-followup">
+                    <p className="draft-followup-prompt">What made this version better?</p>
+                    <div className="draft-followup-options">
+                      <Button minimal outlined small text="More accurate" onClick={() => handleDraftFeedback("accurate")} />
+                      <Button minimal outlined small text="Clearer to read" onClick={() => handleDraftFeedback("clearer")} />
+                      <Button minimal outlined small text="More complete" onClick={() => handleDraftFeedback("complete")} />
+                      {!showDraftFeedbackOther && (
+                        <Button minimal outlined small text="Something else…" onClick={() => setShowDraftFeedbackOther(true)} />
+                      )}
+                      <Button minimal small className="draft-followup-skip" text="Skip" onClick={() => handleDraftFeedback(null)} />
+                    </div>
+                    {showDraftFeedbackOther && (
+                      <div className="draft-followup-other">
+                        <input
+                          type="text"
+                          className="draft-followup-input"
+                          placeholder="Tell us more…"
+                          value={draftFeedbackOtherText}
+                          onChange={(e) => setDraftFeedbackOtherText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && draftFeedbackOtherText.trim()) {
+                              handleDraftFeedback(draftFeedbackOtherText.trim());
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <Button
+                          small
+                          text="Send"
+                          disabled={!draftFeedbackOtherText.trim()}
+                          onClick={() => handleDraftFeedback(draftFeedbackOtherText.trim())}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
                 {hasStagedEdits ? (
                   <div className="output-block">
                     <p className="section-title">Edited Preview</p>
