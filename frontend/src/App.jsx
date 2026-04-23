@@ -31,8 +31,8 @@ const extractApiError = async (response) => {
 };
 
 
-function getUnderlineClass(sentence) {
-  const band = sentence.uncertainty_band;
+function getUnderlineClass(sentence, overrideBand) {
+  const band = overrideBand ?? sentence.uncertainty_band;
   if (band === "mid") return "uncertain-underline-mid";
   if (band === "high") return "uncertain-underline-high";
   return "";
@@ -104,6 +104,10 @@ export function App() {
       : [];
   const stagedEditsCount = Object.keys(acceptedEditsBySentence).length;
   const hasStagedEdits = stagedEditsCount > 0;
+  const bandOverridesBySentence = editorialCards.reduce((acc, card) => {
+    if (card.overrideBand != null) acc[card.sentence] = card.overrideBand;
+    return acc;
+  }, {});
 
   useEffect(() => {
     let cancelled = false;
@@ -409,6 +413,14 @@ export function App() {
     );
   };
 
+  const handleBandOverride = (cardId, band) => {
+    setEditorialCards((previousCards) =>
+      previousCards.map((card) =>
+        card.id === cardId ? { ...card, overrideBand: band } : card
+      )
+    );
+  };
+
   const handleRecheck = async (textToScore) => {
     setIsRescoring(true);
     setErrorMessage("");
@@ -463,6 +475,7 @@ export function App() {
           sentence: card.sentence,
           correction: card.correction,
           tag: card.tag,
+          override_band: card.overrideBand ?? null,
           created_at: card.createdAt
         }));
 
@@ -708,7 +721,7 @@ export function App() {
                             hoverOpenDelay={80}
                           >
                             <span
-                              className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""}`}
+                              className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item, bandOverridesBySentence[item.sentence]) : ""}`}
                             >
                               {item.sentence}
                             </span>
@@ -765,7 +778,7 @@ export function App() {
                               content={getTooltipText(item, showUncertainty, showAmbiguity, showConsistency)}
                               hoverOpenDelay={80}
                             >
-                              <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item) : ""} ${Object.values(acceptedEditsBySentence).includes(item.sentence) ? "edited-sentence-bold" : ""}`}>
+                              <span className={`sentence-interactive ${showUncertainty ? getUnderlineClass(item, bandOverridesBySentence[item.sentence]) : ""} ${Object.values(acceptedEditsBySentence).includes(item.sentence) ? "edited-sentence-bold" : ""}`}>
                                 {item.sentence}
                               </span>
                             </Tooltip>
@@ -796,59 +809,82 @@ export function App() {
           <section className="cards-pane">
             <p className="section-title">Editorial Desk</p>
             <section className="cards-section">
-              {editorialCards.map((card) => (
-                <Card key={card.id} className="editorial-card" elevation={1}>
-                  <div className="card-header">
-                    <p className="card-timestamp muted">
-                      Opened: {new Date(card.createdAt).toLocaleTimeString()}
-                    </p>
-                    <button
-                      type="button"
-                      className="card-dismiss"
-                      aria-label="Dismiss"
-                      onClick={() => handleRevertEdit(card.id)}
-                    >×</button>
-                  </div>
-                  <p className="card-sentence">{card.sentence}</p>
-                  <TextArea
-                    fill
-                    growVertically
-                    placeholder="Enter your correction..."
-                    rows={3}
-                    value={card.correction}
-                    onChange={(event) => handleCorrectionChange(card.id, event.target.value)}
-                  />
-                  <div className="tag-row">
-                    {EDIT_TAGS.map((tagOption) => (
+              {editorialCards.map((card) => {
+                const sentenceItem = sentences.find((s) => s.sentence === card.sentence);
+                const aiBand = sentenceItem?.uncertainty_band ?? "low";
+                const activeBand = card.overrideBand ?? aiBand;
+                return (
+                  <Card key={card.id} className="editorial-card" elevation={1}>
+                    <div className="card-header">
+                      <p className="card-timestamp muted">
+                        Opened: {new Date(card.createdAt).toLocaleTimeString()}
+                      </p>
+                      <button
+                        type="button"
+                        className="card-dismiss"
+                        aria-label="Dismiss"
+                        onClick={() => handleRevertEdit(card.id)}
+                      >×</button>
+                    </div>
+                    <p className="card-sentence">{card.sentence}</p>
+                    <div className="band-override-row">
+                      <span className="band-override-label">Uncertainty:</span>
+                      <div className="band-override-group">
+                        {["low", "mid", "high"].map((band) => (
+                          <button
+                            key={band}
+                            type="button"
+                            className={`band-override-btn band-override-${band}${activeBand === band ? " band-override-active" : ""}`}
+                            onClick={() => handleBandOverride(card.id, band)}
+                          >
+                            {band.charAt(0).toUpperCase() + band.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                      {card.overrideBand != null && card.overrideBand !== aiBand && (
+                        <span className="band-override-note">overrides AI</span>
+                      )}
+                    </div>
+                    <TextArea
+                      fill
+                      growVertically
+                      placeholder="Enter your correction..."
+                      rows={3}
+                      value={card.correction}
+                      onChange={(event) => handleCorrectionChange(card.id, event.target.value)}
+                    />
+                    <div className="tag-row">
+                      {EDIT_TAGS.map((tagOption) => (
+                        <Button
+                          key={`${card.id}-${tagOption}`}
+                          size="small"
+                          intent={card.tag === tagOption ? "primary" : "none"}
+                          text={tagOption}
+                          onClick={() => handleTagChange(card.id, tagOption)}
+                        />
+                      ))}
+                    </div>
+                    <div className="accept-row">
                       <Button
-                        key={`${card.id}-${tagOption}`}
-                        size="small"
-                        intent={card.tag === tagOption ? "primary" : "none"}
-                        text={tagOption}
-                        onClick={() => handleTagChange(card.id, tagOption)}
+                        intent={card.isAccepted ? "success" : "none"}
+                        text={card.isAccepted ? "Accepted" : "Accept"}
+                        disabled={card.isAccepted}
+                        onClick={() => handleAcceptEdit(card.id)}
                       />
-                    ))}
-                  </div>
-                  <div className="accept-row">
-                    <Button
-                      intent={card.isAccepted ? "success" : "none"}
-                      text={card.isAccepted ? "Accepted" : "Accept"}
-                      disabled={card.isAccepted}
-                      onClick={() => handleAcceptEdit(card.id)}
-                    />
-                    <Button
-                      intent="none"
-                      text={card.isAccepted ? "Revert" : "Dismiss"}
-                      onClick={() => handleRevertEdit(card.id)}
-                    />
-                    {card.isAccepted ? (
-                      <span className="accept-status muted">Staged for submission</span>
-                    ) : (
-                      <span className="accept-status muted">Not staged</span>
-                    )}
-                  </div>
-                </Card>
-              ))}
+                      <Button
+                        intent="none"
+                        text={card.isAccepted ? "Revert" : "Dismiss"}
+                        onClick={() => handleRevertEdit(card.id)}
+                      />
+                      {card.isAccepted ? (
+                        <span className="accept-status muted">Staged for submission</span>
+                      ) : (
+                        <span className="accept-status muted">Not staged</span>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
             </section>
           </section>
         ) : null}

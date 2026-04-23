@@ -212,6 +212,7 @@ class EditorialChange(BaseModel):
     sentence: str = Field(min_length=1)
     correction: str
     tag: Literal["editorial refinement", "factual error", "cultural bias"]
+    override_band: Literal["low", "mid", "high"] | None = None
     created_at: str
 
 
@@ -752,10 +753,13 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
         "cultural bias": 0,
     }
     filled_corrections = 0
+    band_override_counts: dict[str, int] = {"low": 0, "mid": 0, "high": 0}
     for edit in payload.edits:
         tag_counts[edit.tag] += 1
         if edit.correction.strip():
             filled_corrections += 1
+        if edit.override_band:
+            band_override_counts[edit.override_band] += 1
 
     response = EditorialChangesResponse(
         status="accepted",
@@ -767,6 +771,7 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
         (
             "Editorial changes accepted | style=%s llm_model=%s edits_received=%s filled_corrections=%s "
             "tags={editorial_refinement:%s,factual_error:%s,cultural_bias:%s} "
+            "band_overrides={low:%s,mid:%s,high:%s} "
             "store_personal_data=%s source_length=%s summary_length=%s received_at=%s"
         ),
         payload.style,
@@ -776,6 +781,9 @@ def submit_editorial_changes(payload: EditorialChangesRequest) -> EditorialChang
         tag_counts["editorial refinement"],
         tag_counts["factual error"],
         tag_counts["cultural bias"],
+        band_override_counts["low"],
+        band_override_counts["mid"],
+        band_override_counts["high"],
         response.store_personal_data,
         len(payload.source_text),
         len(payload.summary),

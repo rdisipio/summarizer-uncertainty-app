@@ -494,6 +494,67 @@ textarea[readonly] {
   align-self: flex-start;
 }
 
+.band-override-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.band-override-label {
+  color: var(--muted);
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.band-override-group {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: inline-flex;
+  overflow: hidden;
+}
+
+.band-override-btn {
+  background: none;
+  border: none;
+  border-right: 1px solid var(--line);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  transition: background 0.1s, color 0.1s;
+}
+
+.band-override-btn:last-child {
+  border-right: none;
+}
+
+.band-override-btn:hover:not(.band-override-active) {
+  background: var(--bg);
+}
+
+.band-override-low.band-override-active {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+
+.band-override-mid.band-override-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.band-override-high.band-override-active {
+  background: #fdecea;
+  color: var(--danger);
+}
+
+.band-override-note {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+}
+
 .draft-followup {
   border: 1px solid var(--line);
   border-radius: 8px;
