@@ -102,11 +102,13 @@ DUAL_SUMMARY_THRESHOLDS: dict[str, float] = {
 
 API_TOKEN = os.getenv("API_TOKEN", "")
 
-_http_bearer = HTTPBearer(auto_error=True)
+_http_bearer = HTTPBearer(auto_error=False)
 
 
-def _require_api_token(credentials: HTTPAuthorizationCredentials = Depends(_http_bearer)) -> None:
-    if not API_TOKEN or credentials.credentials != API_TOKEN:
+def _require_api_token(credentials: HTTPAuthorizationCredentials | None = Depends(_http_bearer)) -> None:
+    if not API_TOKEN:
+        return
+    if credentials is None or credentials.credentials != API_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid or missing API token.")
 
 
