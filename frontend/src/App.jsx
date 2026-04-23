@@ -470,7 +470,7 @@ export function App() {
 
     try {
       const stagedEdits = editorialCards
-        .filter((card) => card.isAccepted && card.correction.trim())
+        .filter((card) => card.isAccepted && (card.correction.trim() || card.overrideBand != null))
         .map((card) => ({
           sentence: card.sentence,
           correction: card.correction,
@@ -510,7 +510,7 @@ export function App() {
             ? "mid"
             : "low"
         : null;
-      const uncertaintyNote = avgPct !== null ? ` Average uncertainty: ${avgBand} (${avgPct}%).` : "";
+      const uncertaintyNote = avgBand !== null ? ` Average uncertainty: ${avgBand}.` : "";
       setSubmitMessage(
         data.edits_received > 0
           ? `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).${uncertaintyNote}`
