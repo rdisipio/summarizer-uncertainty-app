@@ -512,9 +512,10 @@ export function App() {
     setSubmitMessage("");
 
     try {
-      const stagedEdits = editorialCards
-        .filter((card) => card.isAccepted && (card.correction.trim() || card.overrideBand != null))
-        .map((card) => ({
+      const acceptedCards = editorialCards.filter((card) => card.isAccepted && (card.correction.trim() || card.overrideBand != null));
+      const submittedEditsCount = acceptedCards.filter((card) => card.correction.trim()).length;
+      const submittedOverridesCount = acceptedCards.filter((card) => card.overrideBand != null).length;
+      const stagedEdits = acceptedCards.map((card) => ({
           sentence: card.sentence,
           correction: card.correction,
           tag: card.tag,
@@ -554,9 +555,14 @@ export function App() {
             : "low"
         : null;
       const uncertaintyNote = avgBand !== null ? ` Average uncertainty: ${avgBand}.` : "";
+      const changesParts = [
+        submittedEditsCount > 0 ? `${submittedEditsCount} ${submittedEditsCount === 1 ? "edit" : "edits"}` : null,
+        submittedOverridesCount > 0 ? `${submittedOverridesCount} ${submittedOverridesCount === 1 ? "override" : "overrides"}` : null,
+        `personal storage: ${data.store_personal_data ? "enabled" : "disabled"}`,
+      ].filter(Boolean).join(", ");
       setSubmitMessage(
         data.edits_received > 0
-          ? `Changes submitted (${data.edits_received} edits, personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).${uncertaintyNote}`
+          ? `Changes submitted (${changesParts}).${uncertaintyNote}`
           : `Summary accepted with no edits (personal storage: ${data.store_personal_data ? "enabled" : "disabled"}).${uncertaintyNote}`
       );
     } catch (error) {
