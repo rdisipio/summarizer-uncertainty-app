@@ -497,6 +497,7 @@ backend.add_middleware(
 @backend.get("/api/health")
 def health() -> dict[str, str]:
     """Return a basic health payload."""
+    logger.info("Health check")
     return {"status": "ok"}
 
 
