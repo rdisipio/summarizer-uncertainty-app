@@ -493,6 +493,7 @@ backend.add_middleware(
 )
 
 
+@backend.get("/health")
 @backend.get("/api/health")
 def health() -> dict[str, str]:
     """Return a basic health payload."""
